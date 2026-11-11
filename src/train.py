@@ -74,7 +74,9 @@ def main():
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=[
             tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy"),
-            tf.keras.metrics.SparseTopKCategoricalAccuracy(k=5, name="top5_accuracy"),
+            tf.keras.metrics.SparseTopKCategoricalAccuracy(
+                k=min(5, num_classes), name="top5_accuracy"
+            ),
         ],
     )
     with (output_dir / "model_summary.txt").open("w", encoding="utf-8") as handle:
@@ -92,14 +94,16 @@ def main():
         seed=args.seed,
         shuffle_buffer=args.shuffle_buffer,
     )
-    validation = make_dataset(
-        args.manifest_dir / "validation.csv",
-        args.data_dir,
-        args.batch_size,
-        image_size=args.image_size,
-        augment=False,
-        shuffle=False,
-    )
+    validation = None
+    if not args.include_validation:
+        validation = make_dataset(
+            args.manifest_dir / "validation.csv",
+            args.data_dir,
+            args.batch_size,
+            image_size=args.image_size,
+            augment=False,
+            shuffle=False,
+        )
     run_config = {
         key: str(value) if isinstance(value, Path) else value
         for key, value in vars(args).items()
@@ -109,7 +113,8 @@ def main():
             "output_dir": str(output_dir),
             "train_manifest": str(train_manifest),
             "training_samples_per_epoch": training.sample_count,
-            "validation_samples": validation.sample_count,
+            "validation_samples": validation.sample_count if validation else 0,
+            "validation_returned_to_training": args.include_validation,
             "num_classes": num_classes,
             "tensorflow_version": tf.__version__,
             "python_version": platform.python_version(),
@@ -149,9 +154,10 @@ def main():
         training.dataset,
         epochs=args.epochs,
         steps_per_epoch=training.step_count,
-        validation_data=validation.dataset,
-        validation_steps=validation.step_count,
+        validation_data=validation.dataset if validation else None,
+        validation_steps=validation.step_count if validation else None,
         callbacks=callbacks,
+        shuffle=False,
     )
     history_values = {
         key: [float(value) for value in values] for key, values in history.history.items()
