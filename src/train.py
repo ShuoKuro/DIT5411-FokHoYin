@@ -1,4 +1,5 @@
 import argparse
+import csv
 import json
 import platform
 from pathlib import Path
@@ -26,6 +27,9 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--include-validation", action="store_true")
     parser.add_argument("--mixed-precision", action="store_true")
+    parser.add_argument("--resume-from", type=Path)
+    parser.add_argument("--initial-epoch", type=int, default=0)
+    parser.add_argument("--verbose", type=int, choices=(0, 1, 2), default=1)
     return parser.parse_args()
 
 
@@ -45,12 +49,38 @@ def save_training_plot(history, output_path):
     plt.close(figure)
 
 
+def read_complete_history(history_path):
+    with history_path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        rows = list(reader)
+        fields = [field for field in reader.fieldnames if field != "epoch"]
+    return {
+        field: [None if row[field] in ("", "NA") else float(row[field]) for row in rows]
+        for field in fields
+    }
+
+
+def previous_best_accuracy(output_dir, initial_epoch):
+    history_path = output_dir / "history.csv"
+    if not history_path.exists():
+        return None
+    with history_path.open(encoding="utf-8", newline="") as handle:
+        rows = [row for row in csv.DictReader(handle) if int(row["epoch"]) < initial_epoch]
+    if not rows:
+        return None
+    return max(float(row["val_accuracy"]) for row in rows)
+
+
 def main():
     args = parse_args()
     if args.epochs < 1 or args.batch_size < 1 or args.image_size < 16:
         raise ValueError("Epochs and batch size must be positive; image size must be at least 16")
     if args.augmentation_target < 200:
         raise ValueError("The assignment requires at least 200 training samples per class")
+    if not 0 <= args.initial_epoch < args.epochs:
+        raise ValueError("initial_epoch must be at least 0 and less than the final epoch count")
+    if args.initial_epoch > 0 and not args.resume_from:
+        raise ValueError("initial_epoch greater than 0 requires --resume-from")
 
     output_dir = args.output_dir or Path("outputs/runs") / (
         args.model + ("_full40" if args.include_validation else "")
@@ -68,17 +98,27 @@ def main():
     if args.mixed_precision:
         tf.keras.mixed_precision.set_global_policy("mixed_float16")
 
-    model = build_model(args.model, num_classes, args.image_size)
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=args.learning_rate),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[
-            tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy"),
-            tf.keras.metrics.SparseTopKCategoricalAccuracy(
-                k=min(5, num_classes), name="top5_accuracy"
-            ),
-        ],
-    )
+    if args.resume_from:
+        model = tf.keras.models.load_model(args.resume_from)
+        if model.name != args.model:
+            raise ValueError(f"Resume model is {model.name!r}, not {args.model!r}")
+        if model.input_shape[1:] != (args.image_size, args.image_size, 1):
+            raise ValueError("Resume model input shape does not match --image-size")
+        if model.output_shape[-1] != num_classes:
+            raise ValueError("Resume model output size does not match the dataset")
+        model.optimizer.learning_rate.assign(args.learning_rate)
+    else:
+        model = build_model(args.model, num_classes, args.image_size)
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=args.learning_rate),
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+            metrics=[
+                tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy"),
+                tf.keras.metrics.SparseTopKCategoricalAccuracy(
+                    k=min(5, num_classes), name="top5_accuracy"
+                ),
+            ],
+        )
     with (output_dir / "model_summary.txt").open("w", encoding="utf-8") as handle:
         model.summary(print_fn=lambda line: handle.write(line + "\n"))
 
@@ -104,6 +144,9 @@ def main():
             augment=False,
             shuffle=False,
         )
+    previous_best = None
+    if args.resume_from and not args.include_validation:
+        previous_best = previous_best_accuracy(output_dir, args.initial_epoch)
     run_config = {
         key: str(value) if isinstance(value, Path) else value
         for key, value in vars(args).items()
@@ -116,6 +159,7 @@ def main():
             "validation_samples": validation.sample_count if validation else 0,
             "validation_returned_to_training": args.include_validation,
             "checkpoint_monitor": None if args.include_validation else "val_accuracy",
+            "previous_best_val_accuracy": previous_best,
             "num_classes": num_classes,
             "tensorflow_version": tf.__version__,
             "python_version": platform.python_version(),
@@ -127,7 +171,9 @@ def main():
     )
 
     callbacks = [
-        tf.keras.callbacks.CSVLogger(output_dir / "history.csv"),
+        tf.keras.callbacks.CSVLogger(
+            output_dir / "history.csv", append=args.initial_epoch > 0
+        ),
         tf.keras.callbacks.TerminateOnNaN(),
     ]
     if args.include_validation:
@@ -142,12 +188,15 @@ def main():
                     monitor="val_accuracy",
                     mode="max",
                     save_best_only=True,
+                    initial_value_threshold=previous_best,
                 ),
                 tf.keras.callbacks.EarlyStopping(
                     monitor="val_accuracy",
                     mode="max",
                     patience=args.early_stopping_patience,
+                    baseline=previous_best,
                     restore_best_weights=True,
+                    start_from_epoch=args.initial_epoch,
                 ),
                 tf.keras.callbacks.ReduceLROnPlateau(
                     monitor="val_accuracy", mode="max", factor=0.5, patience=1, min_lr=1e-6
@@ -158,15 +207,20 @@ def main():
     history = model.fit(
         training.dataset.repeat(),
         epochs=args.epochs,
+        initial_epoch=args.initial_epoch,
         steps_per_epoch=training.step_count,
         validation_data=validation.dataset.repeat() if validation else None,
         validation_steps=validation.step_count if validation else None,
         callbacks=callbacks,
         shuffle=False,
+        verbose=args.verbose,
     )
-    history_values = {
-        key: [float(value) for value in values] for key, values in history.history.items()
-    }
+    if args.initial_epoch > 0:
+        history_values = read_complete_history(output_dir / "history.csv")
+    else:
+        history_values = {
+            key: [float(value) for value in values] for key, values in history.history.items()
+        }
     (output_dir / "history.json").write_text(
         json.dumps(history_values, indent=2), encoding="utf-8"
     )
@@ -179,6 +233,8 @@ def main():
                 "model": args.model,
                 "output_dir": str(output_dir),
                 "training_samples_per_epoch": training.sample_count,
+                "resumed_from": str(args.resume_from) if args.resume_from else None,
+                "initial_epoch": args.initial_epoch,
             },
             indent=2,
         )
