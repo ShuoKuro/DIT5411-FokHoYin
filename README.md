@@ -60,7 +60,7 @@ python -m src.extract_data \
   --output-dir data
 ```
 
-The extractor uses Python 3.11's ZIP metadata decoding with Big5 and checks archive paths before extraction. It does not depend on the Linux-specific `unzip -O big5` option, so the same command works in the local macOS environment. The expected class-directory root is `data/cleaned_data`. Raw data and generated archives are excluded from Git.
+The extractor uses Python 3.11's ZIP metadata decoding with CP950 and checks archive paths before extraction. It does not depend on the Linux-specific `unzip -O big5` option, so the same command works in the local macOS environment. The expected class-directory root is `data/cleaned_data`. Raw data and generated archives are excluded from Git.
 
 The dataset is distributed under **CC BY-NC-SA 4.0**. Retain attribution to AI-FREE Team and the original STUST EECS Chinese MNIST source when sharing this work.
 
@@ -106,6 +106,8 @@ python -m src.prepare_data \
 ```
 
 Preparation stops with an error unless there are exactly 13,065 class directories and every class has at least 41 images. Images are ordered with a natural filename sort, so numeric suffixes are ordered numerically rather than lexicographically.
+
+The official archive stores class directories as numeric IDs. The actual Chinese character is the shared filename prefix, as in `仚_46.png`. Preparation derives the class mapping from these prefixes, validates one prefix per directory and uniqueness across all directories, and assigns label indices in numeric directory order. Single-image prediction therefore returns the Chinese character rather than the numeric directory ID.
 
 | Manifest | Purpose | Images per class |
 |---|---|---:|
@@ -234,7 +236,7 @@ The command prints the predicted character and ranked class indices and probabil
 
 ## Reproducibility and Repository Contents
 
-- `src/extract_data.py`: safe Big5-aware extraction on macOS and other supported platforms
+- `src/extract_data.py`: safe CP950-aware extraction on macOS and other supported platforms
 - `src/prepare_data.py`: full-dataset audit and deterministic split creation
 - `src/data.py`: manifest handling, exact sample expansion, and `tf.data` pipelines
 - `src/augment.py`: reproducible affine augmentation and preview generation

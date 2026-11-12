@@ -56,7 +56,7 @@ def build_manifests(
 
     class_directories = sorted(
         (path for path in data_dir.iterdir() if path.is_dir()),
-        key=lambda path: path.name,
+        key=natural_key,
     )
     if len(class_directories) != expected_classes:
         raise ValueError(
@@ -65,6 +65,7 @@ def build_manifests(
 
     manifests = {"fit": [], "validation": [], "train": [], "test": []}
     class_counts = []
+    class_characters = []
     for label, class_directory in enumerate(class_directories):
         images = sorted(
             (
@@ -79,6 +80,13 @@ def build_manifests(
                 f"Class {class_directory.name!r} has {len(images)} images; "
                 f"at least {train_per_class + 1} are required"
             )
+        characters = {image_path.stem.rsplit("_", 1)[0] for image_path in images}
+        if len(characters) != 1 or not next(iter(characters)):
+            raise ValueError(
+                f"Class directory {class_directory.name!r} must use one shared Chinese-character filename prefix"
+            )
+        character = characters.pop()
+        class_characters.append(character)
         if verify_images:
             from PIL import Image
 
@@ -93,7 +101,7 @@ def build_manifests(
             {
                 "path": image_path.relative_to(data_dir).as_posix(),
                 "label": label,
-                "character": class_directory.name,
+                "character": character,
                 "source_index": source_index,
             }
             for source_index, image_path in enumerate(images)
@@ -109,7 +117,7 @@ def build_manifests(
         class_counts.append(
             {
                 "label": label,
-                "character": class_directory.name,
+                "character": character,
                 "fit": len(fit_rows),
                 "validation": len(validation_rows),
                 "train": len(train_rows),
@@ -117,6 +125,9 @@ def build_manifests(
                 "total": len(rows),
             }
         )
+
+    if len(set(class_characters)) != len(class_characters):
+        raise ValueError("Chinese-character filename prefixes are not unique across class directories")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for split, rows in manifests.items():
@@ -128,7 +139,7 @@ def build_manifests(
         writer.writeheader()
         writer.writerows(class_counts)
 
-    classes = [path.name for path in class_directories]
+    classes = class_characters
     (output_dir / "classes.json").write_text(
         json.dumps(classes, ensure_ascii=False, indent=2), encoding="utf-8"
     )

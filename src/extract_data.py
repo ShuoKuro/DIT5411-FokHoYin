@@ -3,7 +3,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 
-def extract_dataset(archive_path, output_dir, metadata_encoding="big5"):
+def extract_dataset(archive_path, output_dir, metadata_encoding="cp950"):
     archive_path = Path(archive_path)
     output_dir = Path(output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -31,7 +31,7 @@ def main():
     )
     parser.add_argument("--archive", required=True, type=Path)
     parser.add_argument("--output-dir", type=Path, default=Path("data"))
-    parser.add_argument("--metadata-encoding", default="big5")
+    parser.add_argument("--metadata-encoding", default="cp950")
     args = parser.parse_args()
     extract_dataset(args.archive, args.output_dir, args.metadata_encoding)
 
