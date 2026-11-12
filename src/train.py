@@ -151,10 +151,10 @@ def main():
         )
 
     history = model.fit(
-        training.dataset,
+        training.dataset.repeat(),
         epochs=args.epochs,
         steps_per_epoch=training.step_count,
-        validation_data=validation.dataset if validation else None,
+        validation_data=validation.dataset.repeat() if validation else None,
         validation_steps=validation.step_count if validation else None,
         callbacks=callbacks,
         shuffle=False,

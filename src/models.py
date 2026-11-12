@@ -10,9 +10,11 @@ def build_mlp(num_classes, image_size):
         [
             tf.keras.layers.Input(shape=(image_size, image_size, 1)),
             tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(512, activation="relu"),
+            tf.keras.layers.Dense(512),
+            tf.keras.layers.LeakyReLU(0.1),
             tf.keras.layers.Dropout(0.30),
-            tf.keras.layers.Dense(256, activation="relu"),
+            tf.keras.layers.Dense(256),
+            tf.keras.layers.LeakyReLU(0.1),
             tf.keras.layers.Dropout(0.30),
             tf.keras.layers.Dense(num_classes, activation="softmax", dtype="float32"),
         ],
