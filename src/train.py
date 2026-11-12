@@ -115,6 +115,7 @@ def main():
             "training_samples_per_epoch": training.sample_count,
             "validation_samples": validation.sample_count if validation else 0,
             "validation_returned_to_training": args.include_validation,
+            "checkpoint_monitor": None if args.include_validation else "val_accuracy",
             "num_classes": num_classes,
             "tensorflow_version": tf.__version__,
             "python_version": platform.python_version(),
@@ -137,15 +138,19 @@ def main():
         callbacks.extend(
             [
                 tf.keras.callbacks.ModelCheckpoint(
-                    output_dir / "best_model.keras", monitor="val_loss", save_best_only=True
+                    output_dir / "best_model.keras",
+                    monitor="val_accuracy",
+                    mode="max",
+                    save_best_only=True,
                 ),
                 tf.keras.callbacks.EarlyStopping(
-                    monitor="val_loss",
+                    monitor="val_accuracy",
+                    mode="max",
                     patience=args.early_stopping_patience,
                     restore_best_weights=True,
                 ),
                 tf.keras.callbacks.ReduceLROnPlateau(
-                    monitor="val_loss", factor=0.5, patience=1, min_lr=1e-6
+                    monitor="val_accuracy", mode="max", factor=0.5, patience=1, min_lr=1e-6
                 ),
             ]
         )

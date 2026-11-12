@@ -186,6 +186,8 @@ python -m src.train --data-dir data/cleaned_data --model deeper_cnn --epochs 20
 
 The initial ReLU MLP at learning rate 0.001 developed completely inactive hidden layers. The final MLP therefore uses LeakyReLU 0.1 and learning rate 0.0001; the CNNs retain the default 0.001. This is the only intentional model-specific training-setting difference and is recorded in each run configuration.
 
+Development checkpoint selection, early stopping, and learning-rate scheduling all monitor validation Top-1 accuracy in `max` mode. This aligns model selection with the assignment's recognition-rate objective and avoids premature stopping when validation loss rises because of overconfident wrong predictions.
+
 The default float32 policy was used for the successful Metal backend checks. `--mixed-precision` is available as an optional experiment but is not required and should be enabled only after a separate numerical-stability check. Batch size, learning rate, seed, and other settings are configurable through command-line options.
 
 Each run saves:
@@ -193,7 +195,7 @@ Each run saves:
 - `run_config.json`: complete settings, software versions, and physical devices
 - `model_summary.txt`: layer architecture and parameter counts
 - `history.csv`, `history.json`, and `training_curves.png`: training history
-- `best_model.keras`: best validation-loss checkpoint for development runs
+- `best_model.keras`: highest validation-accuracy checkpoint for development runs
 - `final_model.keras`: model at the end of the run
 
 After selecting an architecture, retrain it with the complete training pool, including the development-validation images. Use the best development epoch count as a fixed epoch count:
