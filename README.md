@@ -27,13 +27,23 @@ The primary development machine has:
 
 Metal 1.2.0 failed to load with TensorFlow 2.21 in this environment, so the compatible TensorFlow 2.18.1 and Keras 3.5.0 versions are pinned. After installing the compatible versions, TensorFlow successfully detected `/physical_device:GPU:0` and completed forward and backward passes for all three model architectures.
 
-A synthetic batch-256 training-step benchmark produced the following idealized results. These measurements exclude real image reading, decoding, augmentation, validation, and checkpoint overhead. They are performance measurements, **not recognition accuracies**.
+A synthetic batch-256 training-step benchmark produced the following idealized results. These measurements exclude real image reading, decoding, augmentation, validation, and checkpoint overhead.
 
 | Model | CPU seconds/step | Metal seconds/step |
 |---|---:|---:|
 | MLP | 0.012 | 0.008 |
 | Compact CNN | 0.123 | 0.033 |
 | Deeper CNN | 0.570 | 0.129 |
+
+A second 20-step Metal benchmark used the real `fit.csv` images and deterministic augmentation pipeline at batch size 256. It included image reading, decoding, resizing, and augmentation, but excluded validation and checkpoint overhead.
+
+| Model | Real-data Metal seconds/step | Estimated hours per full epoch |
+|---|---:|---:|
+| MLP | 0.025 | 0.07 |
+| Compact CNN | 0.037 | 0.10 |
+| Deeper CNN | 0.126 | 0.36 |
+
+All benchmark figures are performance measurements, **not recognition accuracies**.
 
 ## Dataset
 
@@ -105,18 +115,22 @@ python -m src.prepare_data \
   --verify-images
 ```
 
-Preparation stops with an error unless there are exactly 13,065 class directories and every class has at least 41 images. Images are ordered with a natural filename sort, so numeric suffixes are ordered numerically rather than lexicographically.
+Preparation requires exactly 13,065 class directories and verifies every image when `--verify-images` is used. Images are ordered with a natural filename sort, so numeric suffixes are ordered numerically rather than lexicographically.
 
 The official archive stores class directories as numeric IDs. The actual Chinese character is the shared filename prefix, as in `仚_46.png`. Preparation derives the class mapping from these prefixes, validates one prefix per directory and uniqueness across all directories, and assigns label indices in numeric directory order. Single-image prediction therefore returns the Chinese character rather than the numeric directory ID.
 
 | Manifest | Purpose | Images per class |
 |---|---|---:|
-| `fit.csv` | Development-model training originals | 36 |
-| `validation.csv` | Early stopping and learning-rate scheduling | 4 |
-| `train.csv` | Complete assignment training pool | 40 |
-| `test.csv` | Final recognition evaluation | All remaining images |
+| `fit.csv` | Development-model training originals | 36 for standard classes; fewer for short classes |
+| `validation.csv` | Early stopping and learning-rate scheduling | Up to 4 |
+| `train.csv` | Complete assignment training pool | First 40 for standard classes; approximately first 80% for short classes |
+| `test.csv` | Final recognition evaluation | All remaining original images |
 
-The validation images come only from the first 40 training images. Test images are never used for training, augmentation, early stopping, or learning-rate scheduling. Development runs train on `fit.csv`; the final best architecture is retrained on `train.csv` with `--include-validation`.
+The official data contains **43 classes with only 16–40 images**, so the requested 40 training images plus a nonempty test set is mathematically impossible for those classes. Standard classes with more than 40 images use exactly the first 40 for training. Each short class uses approximately its first 80% for training, always retaining at least one original image for testing. This necessary exception preserves all 13,065 classes and never duplicates test images into training. Exact counts for every short class are recorded in `outputs/data/dataset_summary.json`; all classes are listed in `class_counts.csv`.
+
+The completed local audit successfully verified all **684,677 images** and 13,065 unique character labels. The resulting manifests contain 469,620 development-fit originals, 52,260 validation originals, **521,880 training-pool originals**, and **162,797 original test images**. Train and test paths are disjoint, and their counts sum to the full dataset.
+
+Validation images come only from each training pool. Test images are never used for training, augmentation, early stopping, or learning-rate scheduling. Development runs train on `fit.csv`; the final best architecture is retrained on `train.csv` with `--include-validation`.
 
 The data pipeline converts each image to grayscale, resizes it to 64×64 by default, and scales pixel values to `[0,1]`. Integer class labels and sparse categorical cross-entropy avoid allocating a large one-hot label matrix.
 
@@ -135,7 +149,7 @@ Each affine transformation combines:
 
 Empty border pixels are white. The pipeline uses bilinear interpolation and clips values to `[0,1]`.
 
-For a full 40-image training pool, each original appears once and has four augmented variants, producing **40 + 160 = 200 samples per class**. For a 36-image development fit set, the deterministic schedule adds 164 variants distributed across the originals, again producing exactly 200 samples per class. Consequently, each full training epoch contains **2,613,000 samples**.
+For a full 40-image training pool, each original appears once and has four augmented variants, producing **40 + 160 = 200 samples per class**. For a 36-image development fit set, the deterministic schedule adds 164 variants distributed across the originals, again producing exactly 200 samples per class. Short classes receive enough deterministic variants to reach the same target without using test images. Consequently, each full training epoch contains **2,613,000 samples**.
 
 Augmented images are generated on demand with `tf.data` rather than stored as 2.613 million additional files. This avoids excessive disk and memory usage while preserving the required number of training samples. Test and validation images are never augmented.
 

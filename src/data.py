@@ -75,10 +75,9 @@ def build_manifests(
             ),
             key=natural_key,
         )
-        if len(images) < train_per_class + 1:
+        if len(images) < 2:
             raise ValueError(
-                f"Class {class_directory.name!r} has {len(images)} images; "
-                f"at least {train_per_class + 1} are required"
+                f"Class {class_directory.name!r} has {len(images)} images; at least 2 are required"
             )
         characters = {image_path.stem.rsplit("_", 1)[0] for image_path in images}
         if len(characters) != 1 or not next(iter(characters)):
@@ -106,10 +105,19 @@ def build_manifests(
             }
             for source_index, image_path in enumerate(images)
         ]
-        train_rows = rows[:train_per_class]
-        validation_rows = train_rows[-validation_per_class:]
-        fit_rows = train_rows[:-validation_per_class]
-        test_rows = rows[train_per_class:]
+        if len(rows) > train_per_class:
+            train_count = train_per_class
+        else:
+            train_count = min(len(rows) - 1, max(1, round(len(rows) * 0.8)))
+        validation_count = min(validation_per_class, train_count - 1)
+        train_rows = rows[:train_count]
+        if validation_count:
+            validation_rows = train_rows[-validation_count:]
+            fit_rows = train_rows[:-validation_count]
+        else:
+            validation_rows = []
+            fit_rows = train_rows
+        test_rows = rows[train_count:]
         manifests["fit"].extend(fit_rows)
         manifests["validation"].extend(validation_rows)
         manifests["train"].extend(train_rows)
@@ -128,6 +136,7 @@ def build_manifests(
 
     if len(set(class_characters)) != len(class_characters):
         raise ValueError("Chinese-character filename prefixes are not unique across class directories")
+    short_classes = [count for count in class_counts if count["total"] <= train_per_class]
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for split, rows in manifests.items():
@@ -149,22 +158,25 @@ def build_manifests(
     )
     summary = {
         "num_classes": len(classes),
-        "train_per_class": train_per_class,
-        "fit_per_class": train_per_class - validation_per_class,
-        "validation_per_class": validation_per_class,
+        "target_train_per_class": train_per_class,
+        "standard_fit_per_class": train_per_class - validation_per_class,
+        "standard_validation_per_class": validation_per_class,
         "augmented_samples_per_class": 200,
         "fit_original_samples": len(manifests["fit"]),
         "validation_samples": len(manifests["validation"]),
         "train_pool_samples": len(manifests["train"]),
         "test_samples": len(manifests["test"]),
         "total_samples": sum(count["total"] for count in class_counts),
+        "short_class_count": len(short_classes),
+        "short_classes": short_classes,
         "split_rule": (
-            f"Natural filename order; first {train_per_class} form the training pool "
-            "and all remaining images form the test set."
+            f"Natural filename order; classes with more than {train_per_class} images use the first "
+            f"{train_per_class} for training. Short classes use approximately the first 80% for training. "
+            "All remaining images form the test set."
         ),
         "validation_rule": (
-            f"The last {validation_per_class} images within each first-{train_per_class} "
-            "training pool are held out for development runs."
+            f"Up to the last {validation_per_class} images within each training pool are held out "
+            "for development runs."
         ),
     }
     (output_dir / "dataset_summary.json").write_text(
@@ -190,8 +202,8 @@ def make_dataset(
     if not rows:
         raise ValueError(f"Manifest is empty: {manifest_path}")
     counts = Counter(int(row["label"]) for row in rows)
-    if augment and (samples_per_class < max(counts.values()) or len(set(counts.values())) != 1):
-        raise ValueError("Augmented samples per class must be at least the equal original class count")
+    if augment and samples_per_class < max(counts.values()):
+        raise ValueError("Augmented samples per class must be at least every original class count")
     sample_count = samples_per_class * len(counts) if augment else len(rows)
 
     def entry_generator():
