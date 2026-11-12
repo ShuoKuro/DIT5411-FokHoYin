@@ -233,9 +233,13 @@ Evaluation streams batches and writes `metrics.json` plus `top5_predictions.csv`
 
 ## Experimental Results
 
-No full-dataset recognition accuracy is claimed yet. Backend checks and synthetic performance benchmarks are complete, but full-dataset training and evaluation remain to be performed. Before submission, replace this section with a comparison table containing each model's measured test loss, Top-1 accuracy, Top-5 accuracy, epoch count, and a link to its run configuration. Use only values from the generated `metrics.json` files and identify the highest measured Top-1 model as the best model.
+All reported values below come from the original, non-augmented 162,797-image test set. The MLP result is from `outputs/runs/mlp/test_evaluation/metrics.json`; its best validation checkpoint was epoch 3 and early stopping ended training after epoch 6.
 
-Smoke-test results from a reduced or synthetic dataset are debugging evidence only and must not be reported as assignment test accuracy.
+| Model | Learning rate | Test loss | Test Top-1 | Test Top-5 |
+|---|---:|---:|---:|---:|
+| MLP with LeakyReLU 0.1 | 0.0001 | 12.2961 | 0.0964% | 0.3219% |
+
+The Compact CNN and Deeper CNN experiments are still in progress. Their results will be added only after their full-dataset evaluations complete. Smoke-test results from a reduced or synthetic dataset are debugging evidence only and are not assignment test accuracy.
 
 ## Single-Image Prediction
 
