@@ -179,10 +179,26 @@ The complete layer definitions are in `src/models.py`. Model summaries are saved
 Run the development experiments locally with the same data, augmentation target, image size, and stopping rules:
 
 ```bash
-python -m src.train --data-dir data/cleaned_data --model mlp --epochs 20 --learning-rate 0.0001
-python -m src.train --data-dir data/cleaned_data --model compact_cnn --epochs 20
-python -m src.train --data-dir data/cleaned_data --model deeper_cnn --epochs 20
+python -m src.train --data-dir data/cleaned_data --model mlp --epochs 20 --learning-rate 0.0001 --verbose 2
+python -m src.train --data-dir data/cleaned_data --model compact_cnn --epochs 20 --verbose 2
+python -m src.train --data-dir data/cleaned_data --model deeper_cnn --epochs 20 --verbose 2
 ```
+
+For long background runs, `--verbose 2` emits one line per epoch instead of rewriting every step, preventing excessive log output.
+
+To resume after an interruption, load the best checkpoint and set `--initial-epoch` to the number of fully completed epochs. For example, resume Compact CNN after eight complete epochs:
+
+```bash
+python -m src.train \
+  --data-dir data/cleaned_data \
+  --model compact_cnn \
+  --epochs 20 \
+  --resume-from outputs/runs/compact_cnn/best_model.keras \
+  --initial-epoch 8 \
+  --verbose 2
+```
+
+Resume restores model weights and optimizer state, appends `history.csv`, and preserves the previous best validation-accuracy threshold so a worse resumed epoch cannot replace the existing best checkpoint.
 
 The initial ReLU MLP at learning rate 0.001 developed completely inactive hidden layers. The final MLP therefore uses LeakyReLU 0.1 and learning rate 0.0001; the CNNs retain the default 0.001. This is the only intentional model-specific training-setting difference and is recorded in each run configuration.
 
@@ -206,6 +222,7 @@ python -m src.train \
   --model deeper_cnn \
   --include-validation \
   --epochs 20 \
+  --verbose 2 \
   --output-dir outputs/runs/deeper_cnn_full40
 ```
 
