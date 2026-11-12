@@ -252,13 +252,14 @@ Evaluation streams batches and writes `metrics.json` plus `top5_predictions.csv`
 
 ## Experimental Results
 
-All reported values below come from the original, non-augmented 162,797-image test set. The MLP result is from `outputs/runs/mlp/test_evaluation/metrics.json`; its best validation checkpoint was epoch 3 and early stopping ended training after epoch 6.
+All reported values below come from the original, non-augmented 162,797-image test set. The initial MLP baseline used validation-loss selection before the selection rule changed; its best checkpoint was epoch 3 and training stopped after epoch 6. Its result is preserved in `outputs/runs/mlp_val_loss/test_evaluation/metrics.json`. Compact CNN used validation-accuracy selection, reached its best validation accuracy at epoch 8, and stopped after epoch 11.
 
 | Model | Learning rate | Test loss | Test Top-1 | Test Top-5 |
 |---|---:|---:|---:|---:|
 | MLP with LeakyReLU 0.1 | 0.0001 | 12.2961 | 0.0964% | 0.3219% |
+| Compact CNN | 0.001 | 23.7212 | 1.5842% | 3.5080% |
 
-The Compact CNN and Deeper CNN experiments are still in progress. Their results will be added only after their full-dataset evaluations complete. Smoke-test results from a reduced or synthetic dataset are debugging evidence only and are not assignment test accuracy.
+Compact CNN is the best of the currently evaluated models. Its result is stored in `outputs/runs/compact_cnn/test_evaluation/metrics.json`. The Deeper CNN experiment is still in progress. Smoke-test results from a reduced or synthetic dataset are debugging evidence only and are not assignment test accuracy.
 
 ## Single-Image Prediction
 
