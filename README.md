@@ -27,19 +27,19 @@ The primary development machine has:
 
 Metal 1.2.0 failed to load with TensorFlow 2.21 in this environment, so the compatible TensorFlow 2.18.1 and Keras 3.5.0 versions are pinned. After installing the compatible versions, TensorFlow successfully detected `/physical_device:GPU:0` and completed forward and backward passes for all three model architectures.
 
-A synthetic batch-256 training-step benchmark produced the following idealized results. These measurements exclude real image reading, decoding, augmentation, validation, and checkpoint overhead.
+A synthetic batch-256 training-step benchmark produced the following idealized Metal results. These measurements exclude real image reading, decoding, augmentation, validation, and checkpoint overhead.
 
-| Model | CPU seconds/step | Metal seconds/step |
-|---|---:|---:|
-| MLP | 0.012 | 0.008 |
-| Compact CNN | 0.123 | 0.033 |
-| Deeper CNN | 0.570 | 0.129 |
+| Model | Metal seconds/step |
+|---|---:|
+| MLP with LeakyReLU | 0.009 |
+| Compact CNN | 0.033 |
+| Deeper CNN | 0.129 |
 
 A second 20-step Metal benchmark used the real `fit.csv` images and deterministic augmentation pipeline at batch size 256. It included image reading, decoding, resizing, and augmentation, but excluded validation and checkpoint overhead.
 
 | Model | Real-data Metal seconds/step | Estimated hours per full epoch |
 |---|---:|---:|
-| MLP | 0.025 | 0.07 |
+| MLP with LeakyReLU | 0.033 | 0.09 |
 | Compact CNN | 0.037 | 0.10 |
 | Deeper CNN | 0.126 | 0.36 |
 
@@ -168,7 +168,7 @@ All models accept a single grayscale image and end with `Dense(13065, activation
 
 | Model | Architecture | Purpose |
 |---|---|---|
-| MLP | Flatten → Dense 512 → Dropout → Dense 256 → Dropout → Softmax | Non-convolutional baseline |
+| MLP | Flatten → Dense 512 → LeakyReLU 0.1 → Dropout → Dense 256 → LeakyReLU 0.1 → Dropout → Softmax | Non-convolutional baseline |
 | Compact CNN | Three Conv–BatchNorm–ReLU–MaxPool blocks (32, 64, 128 filters) → Global Average Pooling → Dropout → Softmax | Efficient convolutional classifier |
 | Deeper CNN | Convolutional stem → four two-convolution residual blocks (32, 64, 128, 256 filters) → Global Average Pooling → Dropout → Softmax | Deeper spatial feature extraction |
 
@@ -179,10 +179,12 @@ The complete layer definitions are in `src/models.py`. Model summaries are saved
 Run the development experiments locally with the same data, augmentation target, image size, and stopping rules:
 
 ```bash
-python -m src.train --data-dir data/cleaned_data --model mlp --epochs 20
+python -m src.train --data-dir data/cleaned_data --model mlp --epochs 20 --learning-rate 0.0001
 python -m src.train --data-dir data/cleaned_data --model compact_cnn --epochs 20
 python -m src.train --data-dir data/cleaned_data --model deeper_cnn --epochs 20
 ```
+
+The initial ReLU MLP at learning rate 0.001 developed completely inactive hidden layers. The final MLP therefore uses LeakyReLU 0.1 and learning rate 0.0001; the CNNs retain the default 0.001. This is the only intentional model-specific training-setting difference and is recorded in each run configuration.
 
 The default float32 policy was used for the successful Metal backend checks. `--mixed-precision` is available as an optional experiment but is not required and should be enabled only after a separate numerical-stability check. Batch size, learning rate, seed, and other settings are configurable through command-line options.
 
@@ -194,7 +196,7 @@ Each run saves:
 - `best_model.keras`: best validation-loss checkpoint for development runs
 - `final_model.keras`: model at the end of the run
 
-After selecting an architecture, retrain it with all 40 original training images per class. Use the best development epoch count as a fixed epoch count:
+After selecting an architecture, retrain it with the complete training pool, including the development-validation images. Use the best development epoch count as a fixed epoch count:
 
 ```bash
 python -m src.train \
