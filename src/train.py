@@ -32,7 +32,21 @@ def parse_args():
     parser.add_argument("--verbose", type=int, choices=(0, 1, 2), default=1)
     parser.add_argument("--augmentation-mode", choices=("fixed", "per_epoch"), default="fixed")
     parser.add_argument("--augmentation-profile", choices=("standard", "mild"), default="standard")
+    parser.add_argument("--optimizer", choices=("adam", "adamw"), default="adam")
+    parser.add_argument("--weight-decay", type=float, default=0.0)
     return parser.parse_args()
+
+
+def make_optimizer(args):
+    if args.weight_decay < 0:
+        raise ValueError("weight_decay must be non-negative")
+    if args.optimizer == "adamw":
+        return tf.keras.optimizers.AdamW(
+            learning_rate=args.learning_rate, weight_decay=args.weight_decay
+        )
+    if args.weight_decay:
+        raise ValueError("weight_decay greater than 0 requires --optimizer adamw")
+    return tf.keras.optimizers.Adam(learning_rate=args.learning_rate)
 
 
 def save_training_plot(history, output_path):
@@ -108,11 +122,18 @@ def main():
             raise ValueError("Resume model input shape does not match --image-size")
         if model.output_shape[-1] != num_classes:
             raise ValueError("Resume model output size does not match the dataset")
+        loaded_optimizer = model.optimizer.__class__.__name__.lower()
+        if loaded_optimizer != args.optimizer:
+            raise ValueError(
+                f"Resume checkpoint uses {loaded_optimizer}, but --optimizer is {args.optimizer}"
+            )
         model.optimizer.learning_rate.assign(args.learning_rate)
+        if args.optimizer == "adamw":
+            model.optimizer.weight_decay = args.weight_decay
     else:
         model = build_model(args.model, num_classes, args.image_size)
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=args.learning_rate),
+            optimizer=make_optimizer(args),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(),
             metrics=[
                 tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy"),

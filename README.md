@@ -186,6 +186,8 @@ python -m src.train --data-dir data/cleaned_data --model compact_cnn --epochs 20
 python -m src.train --data-dir data/cleaned_data --model deeper_cnn --epochs 20 --verbose 2
 ```
 
+The default optimizer is Adam with zero weight decay. For an independent decoupled weight-decay experiment, use `--optimizer adamw --weight-decay 0.0001`. Optimizer type and decay are recorded in `run_config.json` and validated when resuming a checkpoint.
+
 For long background runs, `--verbose 2` emits one line per epoch instead of rewriting every step, preventing excessive log output.
 
 To resume after an interruption, load the best checkpoint and set `--initial-epoch` to the number of fully completed epochs. For example, resume Compact CNN after eight complete epochs:
