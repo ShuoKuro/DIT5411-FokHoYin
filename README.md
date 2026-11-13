@@ -153,6 +153,8 @@ For a full 40-image training pool, each original appears once and has four augme
 
 Augmented images are generated on demand with `tf.data` rather than stored as 2.613 million additional files. This avoids excessive disk and memory usage while preserving the required number of training samples. Test and validation images are never augmented.
 
+Two training modes are available. The default `--augmentation-mode fixed` repeats the same variants across epochs for baseline compatibility. `--augmentation-mode per_epoch` lazily concatenates epoch-specific datasets and includes the actual epoch number in the deterministic seed, providing different variants each epoch while preserving reproducibility, resume behavior, and exactly 200 samples per class.
+
 Create a visual and parameter audit for one training image:
 
 ```bash

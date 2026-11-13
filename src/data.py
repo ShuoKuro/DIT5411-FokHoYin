@@ -195,10 +195,11 @@ def make_dataset(
     shuffle=False,
     seed=42,
     shuffle_buffer=50000,
+    rows=None,
 ):
     manifest_path = Path(manifest_path)
     data_dir = Path(data_dir).resolve()
-    rows = read_manifest(manifest_path)
+    rows = read_manifest(manifest_path) if rows is None else rows
     if not rows:
         raise ValueError(f"Manifest is empty: {manifest_path}")
     counts = Counter(int(row["label"]) for row in rows)
@@ -252,3 +253,36 @@ def make_dataset(
     dataset = dataset.map(process, num_parallel_calls=tf.data.AUTOTUNE, deterministic=True)
     dataset = dataset.batch(batch_size, drop_remainder=False).prefetch(tf.data.AUTOTUNE)
     return DatasetBundle(dataset, sample_count, math.ceil(sample_count / batch_size))
+
+
+def make_epoch_sequence(
+    manifest_path,
+    data_dir,
+    batch_size,
+    initial_epoch,
+    epochs,
+    image_size=64,
+    samples_per_class=200,
+    seed=42,
+    shuffle_buffer=50000,
+    shuffle=True,
+):
+    if epochs <= initial_epoch:
+        raise ValueError("epochs must be greater than initial_epoch")
+    rows = read_manifest(manifest_path)
+    sequence = None
+    for epoch in range(initial_epoch, epochs):
+        epoch_bundle = make_dataset(
+            manifest_path,
+            data_dir,
+            batch_size,
+            image_size=image_size,
+            augment=True,
+            samples_per_class=samples_per_class,
+            shuffle=shuffle,
+            seed=seed + epoch,
+            shuffle_buffer=shuffle_buffer,
+            rows=rows,
+        )
+        sequence = epoch_bundle.dataset if sequence is None else sequence.concatenate(epoch_bundle.dataset)
+    return sequence

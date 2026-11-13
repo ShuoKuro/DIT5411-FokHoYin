@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 
-from .data import make_dataset
+from .data import make_dataset, make_epoch_sequence
 from .models import MODEL_NAMES, NUM_CLASSES, build_model
 
 
@@ -30,6 +30,7 @@ def parse_args():
     parser.add_argument("--resume-from", type=Path)
     parser.add_argument("--initial-epoch", type=int, default=0)
     parser.add_argument("--verbose", type=int, choices=(0, 1, 2), default=1)
+    parser.add_argument("--augmentation-mode", choices=("fixed", "per_epoch"), default="fixed")
     return parser.parse_args()
 
 
@@ -204,8 +205,23 @@ def main():
             ]
         )
 
+    if args.augmentation_mode == "per_epoch":
+        training_dataset = make_epoch_sequence(
+            train_manifest,
+            args.data_dir,
+            args.batch_size,
+            initial_epoch=args.initial_epoch,
+            epochs=args.epochs,
+            image_size=args.image_size,
+            samples_per_class=args.augmentation_target,
+            seed=args.seed,
+            shuffle_buffer=args.shuffle_buffer,
+        )
+    else:
+        training_dataset = training.dataset.repeat()
+
     history = model.fit(
-        training.dataset.repeat(),
+        training_dataset,
         epochs=args.epochs,
         initial_epoch=args.initial_epoch,
         steps_per_epoch=training.step_count,
