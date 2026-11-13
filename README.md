@@ -140,14 +140,14 @@ Augmentation is applied only to training samples. A deterministic seed is derive
 
 Each affine transformation combines:
 
-| Operation | Range |
-|---|---|
-| Rotation | -10° to +10° |
-| Shear | -0.12 to +0.12 |
-| Scaling | 0.90 to 1.10 |
-| Horizontal and vertical translation | Up to 5% of image width or height |
+| Operation | Standard profile | Mild profile |
+|---|---|---|
+| Rotation | -10° to +10° | -7° to +7° |
+| Shear | -0.12 to +0.12 | -0.08 to +0.08 |
+| Scaling | 0.90 to 1.10 | 0.93 to 1.07 |
+| Horizontal and vertical translation | Up to 5% of image width or height | Up to 3% |
 
-Empty border pixels are white. The pipeline uses bilinear interpolation and clips values to `[0,1]`.
+Select the profile with `--augmentation-profile standard` or `--augmentation-profile mild`. Empty border pixels are white. The pipeline uses bilinear interpolation and clips values to `[0,1]`.
 
 For a full 40-image training pool, each original appears once and has four augmented variants, producing **40 + 160 = 200 samples per class**. For a 36-image development fit set, the deterministic schedule adds 164 variants distributed across the originals, again producing exactly 200 samples per class. Short classes receive enough deterministic variants to reach the same target without using test images. Consequently, each full training epoch contains **2,613,000 samples**.
 
@@ -270,6 +270,17 @@ The final run reached 98.51% training accuracy, compared with 16.56% test Top-1 
 The final metrics are stored in `outputs/runs/deeper_cnn_full40/test_evaluation/metrics.json`. A final-model single-image check on the original test image `5/他_41.png` correctly returned `他` with probability 0.5976 and Top-5 candidates `他; 她; 伳; 怹; 崺`. This verifies the end-to-end prediction pipeline and Chinese-character mapping; individual examples are not used to calculate overall accuracy.
 
 Smoke-test results from a reduced or synthetic dataset are debugging evidence only and are not assignment test accuracy.
+
+## Validation-Only Optimization Experiments
+
+Candidate selection uses validation accuracy at equal epoch budgets; the test set is not used for tuning. The epoch-5 comparison is:
+
+| Experiment | Validation Top-1 | Validation Top-5 | Validation loss |
+|---|---:|---:|---:|
+| Original Deeper CNN, fixed standard augmentation | 11.2438% | 15.1665% | 21.0903 |
+| A1: per-epoch standard augmentation | 0.0210% | 0.0938% | 72.2994 |
+
+A1 was rejected and was not evaluated on the test set. Although its validation Top-1 temporarily reached 3.7447% at epoch 4, it collapsed at epoch 5 and remained unstable. The original model and final results are unchanged. A2 evaluates per-epoch augmentation with the mild profile.
 
 ## Single-Image Prediction
 

@@ -5,10 +5,20 @@ from pathlib import Path
 import tensorflow as tf
 
 
-ROTATION_DEGREES = 10.0
-SHEAR_FACTOR = 0.12
-SCALE_RANGE = (0.90, 1.10)
-TRANSLATION_FRACTION = 0.05
+AUGMENTATION_PROFILES = {
+    "standard": {
+        "rotation_degrees": 10.0,
+        "shear": 0.12,
+        "scale": (0.90, 1.10),
+        "translation": 0.05,
+    },
+    "mild": {
+        "rotation_degrees": 7.0,
+        "shear": 0.08,
+        "scale": (0.93, 1.07),
+        "translation": 0.03,
+    },
+}
 
 
 def load_image(path, image_size):
@@ -21,24 +31,29 @@ def load_image(path, image_size):
     return tf.ensure_shape(image, [image_size, image_size, 1])
 
 
-def sample_augmentation_parameters(seed):
+def sample_augmentation_parameters(seed, profile="standard"):
     seed = tf.convert_to_tensor(seed, dtype=tf.int32)
+    settings = AUGMENTATION_PROFILES[profile]
 
     def uniform(minimum, maximum, offset):
         offset_seed = seed + tf.constant([offset, 0], dtype=tf.int32)
         return tf.random.stateless_uniform([], offset_seed, minimum, maximum)
 
+    rotation_limit = settings["rotation_degrees"]
+    shear_limit = settings["shear"]
+    scale_range = settings["scale"]
+    translation_limit = settings["translation"]
     return {
-        "rotation_degrees": uniform(-ROTATION_DEGREES, ROTATION_DEGREES, 1),
-        "shear": uniform(-SHEAR_FACTOR, SHEAR_FACTOR, 2),
-        "scale": uniform(SCALE_RANGE[0], SCALE_RANGE[1], 3),
-        "translation_x": uniform(-TRANSLATION_FRACTION, TRANSLATION_FRACTION, 4),
-        "translation_y": uniform(-TRANSLATION_FRACTION, TRANSLATION_FRACTION, 5),
+        "rotation_degrees": uniform(-rotation_limit, rotation_limit, 1),
+        "shear": uniform(-shear_limit, shear_limit, 2),
+        "scale": uniform(scale_range[0], scale_range[1], 3),
+        "translation_x": uniform(-translation_limit, translation_limit, 4),
+        "translation_y": uniform(-translation_limit, translation_limit, 5),
     }
 
 
-def augment_image(image, seed):
-    parameters = sample_augmentation_parameters(seed)
+def augment_image(image, seed, profile="standard"):
+    parameters = sample_augmentation_parameters(seed, profile)
     height = tf.cast(tf.shape(image)[0], tf.float32)
     width = tf.cast(tf.shape(image)[1], tf.float32)
     center_x = (width - 1.0) / 2.0
@@ -78,6 +93,9 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--image-size", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--profile", choices=tuple(AUGMENTATION_PROFILES), default="standard"
+    )
     args = parser.parse_args()
 
     import matplotlib.pyplot as plt
@@ -87,8 +105,8 @@ def main():
     parameters = []
     for variant in range(8):
         variant_seed = [args.seed, variant + 1]
-        images.append(augment_image(original, variant_seed))
-        values = sample_augmentation_parameters(variant_seed)
+        images.append(augment_image(original, variant_seed, args.profile))
+        values = sample_augmentation_parameters(variant_seed, args.profile)
         parameters.append({key: float(value.numpy()) for key, value in values.items()})
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -103,7 +121,7 @@ def main():
     args.output.with_suffix(".json").write_text(
         json.dumps(parameters, indent=2), encoding="utf-8"
     )
-    print(f"Saved augmentation preview to {args.output}")
+    print(f"Saved {args.profile} augmentation preview to {args.output}")
 
 
 if __name__ == "__main__":

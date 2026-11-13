@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument("--initial-epoch", type=int, default=0)
     parser.add_argument("--verbose", type=int, choices=(0, 1, 2), default=1)
     parser.add_argument("--augmentation-mode", choices=("fixed", "per_epoch"), default="fixed")
+    parser.add_argument("--augmentation-profile", choices=("standard", "mild"), default="standard")
     return parser.parse_args()
 
 
@@ -134,6 +135,7 @@ def main():
         shuffle=True,
         seed=args.seed,
         shuffle_buffer=args.shuffle_buffer,
+        augmentation_profile=args.augmentation_profile,
     )
     validation = None
     if not args.include_validation:
@@ -216,6 +218,7 @@ def main():
             samples_per_class=args.augmentation_target,
             seed=args.seed,
             shuffle_buffer=args.shuffle_buffer,
+            augmentation_profile=args.augmentation_profile,
         )
     else:
         training_dataset = training.dataset.repeat()

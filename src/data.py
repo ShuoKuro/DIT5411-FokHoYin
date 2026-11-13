@@ -196,6 +196,7 @@ def make_dataset(
     seed=42,
     shuffle_buffer=50000,
     rows=None,
+    augmentation_profile="standard",
 ):
     manifest_path = Path(manifest_path)
     data_dir = Path(data_dir).resolve()
@@ -245,7 +246,7 @@ def make_dataset(
         image = load_image(path, image_size)
         image = tf.cond(
             variant >= 0,
-            lambda: augment_image(image, [seed, entry_seed]),
+            lambda: augment_image(image, [seed, entry_seed], augmentation_profile),
             lambda: image,
         )
         return image, label
@@ -266,6 +267,7 @@ def make_epoch_sequence(
     seed=42,
     shuffle_buffer=50000,
     shuffle=True,
+    augmentation_profile="standard",
 ):
     if epochs <= initial_epoch:
         raise ValueError("epochs must be greater than initial_epoch")
@@ -283,6 +285,7 @@ def make_epoch_sequence(
             seed=seed + epoch,
             shuffle_buffer=shuffle_buffer,
             rows=rows,
+            augmentation_profile=augmentation_profile,
         )
         sequence = epoch_bundle.dataset if sequence is None else sequence.concatenate(epoch_bundle.dataset)
     return sequence
