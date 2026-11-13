@@ -252,17 +252,20 @@ Evaluation streams batches and writes `metrics.json` plus `top5_predictions.csv`
 
 ## Experimental Results
 
-All reported values below come from the original, non-augmented 162,797-image test set. The initial MLP baseline used validation-loss selection before the selection rule changed; its best checkpoint was epoch 3 and training stopped after epoch 6. Its result is preserved in `outputs/runs/mlp_val_loss/test_evaluation/metrics.json`. Compact CNN reached its best validation accuracy at epoch 8 and stopped after epoch 11. Deeper CNN completed all 20 epochs and reached its best validation accuracy at epoch 20.
+All reported values below come from the original, non-augmented 162,797-image test set. The initial MLP baseline used validation-loss selection before the selection rule changed; its best checkpoint was epoch 3 and training stopped after epoch 6. Compact CNN reached its best validation accuracy at epoch 8 and stopped after epoch 11. The development Deeper CNN completed all 20 epochs and reached its best validation accuracy at epoch 20.
 
 | Model | Learning rate | Test loss | Test Top-1 | Test Top-5 |
 |---|---:|---:|---:|---:|
 | MLP with LeakyReLU 0.1 | 0.0001 | 12.2961 | 0.0964% | 0.3219% |
 | Compact CNN | 0.001 | 23.7212 | 1.5842% | 3.5080% |
-| Deeper CNN | 0.001 | 18.2040 | **16.4763%** | **19.4549%** |
+| Deeper CNN, development split | 0.001 | 18.2040 | 16.4763% | 19.4549% |
+| **Deeper CNN, complete training pool** | 0.001 | **12.3341** | **16.5636%** | **27.9796%** |
 
-Deeper CNN is the best development model. At epoch 20, it reached 87.24% training accuracy and 18.56% validation Top-1 accuracy, compared with 16.48% test Top-1 accuracy. The remaining training/validation gap indicates overfitting, although validation accuracy was still improving at the final epoch. Its result is stored in `outputs/runs/deeper_cnn/test_evaluation/metrics.json`.
+The final submission model is the Deeper CNN retrained for 20 fixed epochs with the complete training pool. Relative to the development Deeper CNN, its Top-1 accuracy is similar, Top-5 accuracy increases from 19.45% to 27.98%, and test loss decreases from 18.20 to 12.33. No validation metrics are reported for this full-pool run because the validation images were returned to training.
 
-A single-image end-to-end check on the original test image `3/仔_50.png` correctly returned `仔` with Top-5 candidates `仔; 孑; 宁; 存; 府`. This example verifies the prediction pipeline and Chinese-character mapping; it is not used to calculate overall accuracy.
+The final run reached 98.51% training accuracy, compared with 16.56% test Top-1 accuracy. This gap shows that substantial overfitting remains despite augmentation. Limited originals per class, similar Chinese character shapes, and deterministic repeated augmentation variants are important limitations. More diverse real handwriting and less repetitive augmentation are recommended for future improvement.
+
+The final metrics are stored in `outputs/runs/deeper_cnn_full40/test_evaluation/metrics.json`. A final-model single-image check on the original test image `5/他_41.png` correctly returned `他` with probability 0.5976 and Top-5 candidates `他; 她; 伳; 怹; 崺`. This verifies the end-to-end prediction pipeline and Chinese-character mapping; individual examples are not used to calculate overall accuracy.
 
 Smoke-test results from a reduced or synthetic dataset are debugging evidence only and are not assignment test accuracy.
 
