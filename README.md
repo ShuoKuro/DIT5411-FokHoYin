@@ -282,8 +282,11 @@ Candidate selection uses validation accuracy at equal epoch budgets; the test se
 | Original Deeper CNN, fixed standard augmentation | 11.2438% | 15.1665% | 21.0903 |
 | A1: per-epoch standard augmentation | 0.0210% | 0.0938% | 72.2994 |
 | A2: per-epoch mild augmentation | 0.0364% | 0.1646% | 57.5262 |
+| C1: fixed standard augmentation, learning rate 0.0005 | 2.9066% | 6.3930% | 20.5012 |
 
-A1 and A2 were rejected and were not evaluated on the test set. A1 temporarily reached 3.7447% validation Top-1 at epoch 4 but collapsed at epoch 5. A2 peaked at 1.0046% at epoch 2 and also remained unstable. Neither produced a promising trajectory against the original epoch-5 baseline. Following the screening stop rule, no candidate proceeds to regularization, extended training, or complete-training-pool retraining. The existing Deeper CNN and final results remain unchanged.
+A1 and A2 were rejected and were not evaluated on the test set. A1 temporarily reached 3.7447% validation Top-1 at epoch 4 but collapsed at epoch 5. A2 peaked at 1.0046% at epoch 2 and also remained unstable. Neither produced a promising trajectory against the original epoch-5 baseline, so the augmentation direction was stopped.
+
+C1 was paused safely after epoch 3 and later resumed from its checkpoint. Its final validation Top-1 remained below the original baseline, so it was not extended. C2 is an independent AdamW weight-decay screen with the original learning rate. No optimizer candidate is evaluated on the test set unless it is selected by validation. The existing final model and results remain unchanged.
 
 ## Single-Image Prediction
 
