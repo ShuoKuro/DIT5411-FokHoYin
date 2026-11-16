@@ -289,3 +289,58 @@ def make_epoch_sequence(
         )
         sequence = epoch_bundle.dataset if sequence is None else sequence.concatenate(epoch_bundle.dataset)
     return sequence
+
+
+
+def make_tta_dataset(
+    manifest_path,
+    data_dir,
+    batch_size,
+    image_size=64,
+    views=1,
+    profile="mild",
+    seed=42,
+    rows=None,
+):
+    if views < 1:
+        raise ValueError("views must be at least 1")
+    if batch_size % views:
+        raise ValueError("batch_size must be divisible by views")
+    manifest_path = Path(manifest_path)
+    data_dir = Path(data_dir).resolve()
+    rows = read_manifest(manifest_path) if rows is None else rows
+    if not rows:
+        raise ValueError(f"Manifest is empty: {manifest_path}")
+
+    def entry_generator():
+        for row in rows:
+            relative_path = row["path"]
+            absolute_path = str(data_dir / Path(relative_path))
+            label = int(row["label"])
+            for view in range(views):
+                view_seed = zlib.crc32(
+                    f"{seed}:{relative_path}:{view}".encode("utf-8")
+                ) & 0x7FFFFFFF
+                yield absolute_path, label, view, view_seed
+
+    output_signature = (
+        tf.TensorSpec(shape=(), dtype=tf.string),
+        tf.TensorSpec(shape=(), dtype=tf.int32),
+        tf.TensorSpec(shape=(), dtype=tf.int32),
+        tf.TensorSpec(shape=(), dtype=tf.int32),
+    )
+    dataset = tf.data.Dataset.from_generator(entry_generator, output_signature=output_signature)
+
+    def process(path, label, view, view_seed):
+        image = load_image(path, image_size)
+        image = tf.cond(
+            view > 0,
+            lambda: augment_image(image, [seed, view_seed], profile),
+            lambda: image,
+        )
+        return image, label
+
+    dataset = dataset.map(process, num_parallel_calls=tf.data.AUTOTUNE, deterministic=True)
+    dataset = dataset.batch(batch_size, drop_remainder=False).prefetch(tf.data.AUTOTUNE)
+    sample_count = len(rows) * views
+    return DatasetBundle(dataset, sample_count, math.ceil(sample_count / batch_size))
