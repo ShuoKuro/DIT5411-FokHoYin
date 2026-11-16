@@ -256,20 +256,23 @@ Evaluation streams batches and writes `metrics.json` plus `top5_predictions.csv`
 
 ## Experimental Results
 
-All reported values below come from the original, non-augmented 162,797-image test set. The initial MLP baseline used validation-loss selection before the selection rule changed; its best checkpoint was epoch 3 and training stopped after epoch 6. Compact CNN reached its best validation accuracy at epoch 8 and stopped after epoch 11. The development Deeper CNN completed all 20 epochs and reached its best validation accuracy at epoch 20.
+All non-TTA values below come from the original, non-augmented 162,797-image test set. TTA metrics use the same original test manifest, but average model probabilities over the original image and seven deterministic mild transformed views at inference. Test labels were never used for training or TTA selection.
 
-| Model | Learning rate | Test loss | Test Top-1 | Test Top-5 |
+The initial MLP baseline used validation-loss selection before the selection rule changed; its best checkpoint was epoch 3 and training stopped after epoch 6. Compact CNN reached its best validation accuracy at epoch 8 and stopped after epoch 11. The development Deeper CNN completed all 20 epochs and reached its best validation accuracy at epoch 20.
+
+| Model / inference | Learning rate | Test loss | Test Top-1 | Test Top-5 |
 |---|---:|---:|---:|---:|
 | MLP with LeakyReLU 0.1 | 0.0001 | 12.2961 | 0.0964% | 0.3219% |
 | Compact CNN | 0.001 | 23.7212 | 1.5842% | 3.5080% |
 | Deeper CNN, development split | 0.001 | 18.2040 | 16.4763% | 19.4549% |
-| **Deeper CNN, complete training pool** | 0.001 | **12.3341** | **16.5636%** | **27.9796%** |
+| Deeper CNN, complete training pool | 0.001 | 12.3341 | 16.5636% | 27.9796% |
+| **Complete-pool Deeper CNN + 8-view mild TTA** | 0.001 | **9.1368** | **17.3867%** | **29.9465%** |
 
-The final submission model is the Deeper CNN retrained for 20 fixed epochs with the complete training pool. Relative to the development Deeper CNN, its Top-1 accuracy is similar, Top-5 accuracy increases from 19.45% to 27.98%, and test loss decreases from 18.20 to 12.33. No validation metrics are reported for this full-pool run because the validation images were returned to training.
+The final submission configuration is the complete-training-pool Deeper CNN with 8-view mild TTA. Compared with the same model without TTA, it improves Top-1 by 0.8231 percentage points and Top-5 by 1.9669 percentage points, while reducing test loss from 12.3341 to 9.1368. The configuration was selected only by development validation and was then applied unchanged to the final model.
 
-The final run reached 98.51% training accuracy, compared with 16.56% test Top-1 accuracy. This gap shows that substantial overfitting remains despite augmentation. Limited originals per class, similar Chinese character shapes, and deterministic repeated augmentation variants are important limitations. More diverse real handwriting and less repetitive augmentation are recommended for future improvement.
+The full-pool training run reached 98.51% training accuracy, compared with 16.56% original-image test Top-1 and 17.39% TTA Top-1. The remaining gap still indicates substantial overfitting. Limited originals per class, similar Chinese character shapes, and deterministic repeated training variants are important limitations. More diverse real handwriting remains the preferred long-term improvement.
 
-The final metrics are stored in `outputs/runs/deeper_cnn_full40/test_evaluation/metrics.json`. A final-model single-image check on the original test image `5/他_41.png` correctly returned `他` with probability 0.5976 and Top-5 candidates `他; 她; 伳; 怹; 崺`. This verifies the end-to-end prediction pipeline and Chinese-character mapping; individual examples are not used to calculate overall accuracy.
+The final TTA metrics are stored in `outputs/runs/deeper_cnn_full40/test_tta8_mild/metrics.json`. A final-model single-image check with the same eight views on the original test image `5/他_41.png` correctly returned `他` with mean probability 0.4410 and Top-5 candidates `他; 伳; 她; 怹; 赩`. Individual examples are not used to calculate overall accuracy.
 
 Smoke-test results from a reduced or synthetic dataset are debugging evidence only and are not assignment test accuracy.
 
@@ -287,20 +290,36 @@ Candidate selection uses validation accuracy at equal epoch budgets; the test se
 
 A1 and A2 were rejected and were not evaluated on the test set. A1 temporarily reached 3.7447% validation Top-1 at epoch 4 but collapsed at epoch 5. A2 peaked at 1.0046% at epoch 2 and also remained unstable. Neither produced a promising trajectory against the original epoch-5 baseline, so the augmentation direction was stopped.
 
-C1 was paused safely after epoch 3 and later resumed from its checkpoint. Its final validation Top-1 remained below the original baseline, so it was not extended. C2 also underperformed the original baseline. Following the optimizer-screening stop rule, neither C1 nor C2 was extended, and label smoothing was not attempted because no optimizer candidate was promising. No optimizer candidate was evaluated on the test set. The existing final model and results remain unchanged.
+C1 was paused safely after epoch 3 and later resumed from its checkpoint. Its final validation Top-1 remained below the original baseline, so it was not extended. C2 also underperformed the original baseline. Following the optimizer-screening stop rule, neither C1 nor C2 was extended. No optimizer candidate was evaluated on the test set.
+
+### Test-Time Augmentation
+
+TTA was selected on the development Deeper CNN without changing model weights:
+
+| TTA configuration | Validation Top-1 | Validation Top-5 |
+|---|---:|---:|
+| Original single view | 18.5591% | 21.4945% |
+| Four mild views | 18.7792% | 21.9135% |
+| **Eight mild views** | **18.7926%** | **22.0054%** |
+
+Eight mild views provided the highest validation accuracy and were locked before the final test evaluation. Because TTA improved validation, label smoothing was not started in this optimization round.
 
 ## Single-Image Prediction
 
-After training and evaluation, run:
+After training and evaluation, run the selected 8-view TTA configuration:
 
 ```bash
 python -m src.predict \
   --model-path outputs/runs/deeper_cnn_full40/final_model.keras \
   --image path/to/handwritten_image.png \
-  --manifest-dir outputs/data
+  --manifest-dir outputs/data \
+  --tta-views 8 \
+  --tta-profile mild \
+  --seed 42 \
+  --data-dir data/cleaned_data
 ```
 
-The command prints the predicted character and ranked class indices and probabilities. Preprocessing is identical to evaluation: grayscale conversion, resizing, and normalization without augmentation.
+The command prints the predicted character and ranked class indices and mean probabilities. Preprocessing is grayscale conversion, resizing, and normalization. The default `--tta-views 1` preserves original single-image inference; eight views average the original prediction with seven deterministic mild transformations. TTA is an inference method and is reported separately from non-augmented evaluation.
 
 ## Reproducibility and Repository Contents
 
@@ -310,8 +329,9 @@ The command prints the predicted character and ranked class indices and probabil
 - `src/augment.py`: reproducible affine augmentation and preview generation
 - `src/models.py`: MLP, Compact CNN, and Deeper Residual CNN definitions
 - `src/train.py`: configurable training, checkpoints, and history export
-- `src/evaluate.py`: streaming test evaluation and Top-5 prediction export
-- `src/predict.py`: single-image inference
+- `src/evaluate.py`: streaming non-augmented test evaluation and Top-5 prediction export
+- `src/tta_evaluate.py`: deterministic test-time augmentation evaluation
+- `src/predict.py`: single-image inference with optional TTA
 - `notebooks/DIT5411_Colab.ipynb`: optional GPU-enabled cloud workflow
 
 The `data/`, `outputs/`, virtual-environment, and cache directories are ignored. Do not commit the raw dataset, augmented dataset, model binaries, or large prediction files. Record the actual software and hardware details from `run_config.json` with the final results.
