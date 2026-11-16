@@ -173,6 +173,7 @@ All models accept a single grayscale image and end with `Dense(13065, activation
 | MLP | Flatten → Dense 512 → LeakyReLU 0.1 → Dropout → Dense 256 → LeakyReLU 0.1 → Dropout → Softmax | Non-convolutional baseline |
 | Compact CNN | Three Conv–BatchNorm–ReLU–MaxPool blocks (32, 64, 128 filters) → Global Average Pooling → Dropout → Softmax | Efficient convolutional classifier |
 | Deeper CNN | Convolutional stem → four two-convolution residual blocks (32, 64, 128, 256 filters) → Global Average Pooling → Dropout → Softmax | Deeper spatial feature extraction |
+| SE CNN | Deeper residual blocks with squeeze-and-excitation channel attention → Global Average Pooling → Dropout → Softmax | Candidate architecture for weighting fine-grained stroke features |
 
 The complete layer definitions are in `src/models.py`. Model summaries are saved with each training run.
 
