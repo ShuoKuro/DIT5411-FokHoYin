@@ -288,10 +288,14 @@ Candidate selection uses validation accuracy at equal epoch budgets; the test se
 | A2: per-epoch mild augmentation | 0.0364% | 0.1646% | 57.5262 |
 | C1: fixed standard augmentation, learning rate 0.0005 | 2.9066% | 6.3930% | 20.5012 |
 | C2: AdamW, weight decay 0.0001, learning rate 0.001 | 0.2047% | 0.6755% | 31.6595 |
+| R1: Deeper CNN at 96×96, fixed standard augmentation | 0.1760% | 0.5186% | 21.7964 |
+| SE CNN at 64×64, fixed standard augmentation | 0.0268% | 0.0785% | 125.0334 |
 
 A1 and A2 were rejected and were not evaluated on the test set. A1 temporarily reached 3.7447% validation Top-1 at epoch 4 but collapsed at epoch 5. A2 peaked at 1.0046% at epoch 2 and also remained unstable. Neither produced a promising trajectory against the original epoch-5 baseline, so the augmentation direction was stopped.
 
 C1 was paused safely after epoch 3 and later resumed from its checkpoint. Its final validation Top-1 remained below the original baseline, so it was not extended. C2 also underperformed the original baseline. Following the optimizer-screening stop rule, neither C1 nor C2 was extended. No optimizer candidate was evaluated on the test set.
+
+R1 and the SE architecture were also rejected. At epoch 5, R1 reached 90.71% training accuracy but only 0.1760% validation Top-1; SE CNN reached 95.02% training accuracy but only 0.0268% validation Top-1. Neither was extended, combined, retrained on the full training pool, or evaluated on the test set. These results show that simply increasing resolution or adding channel attention did not improve generalization under the shared settings.
 
 ### Test-Time Augmentation
 
