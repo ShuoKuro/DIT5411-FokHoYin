@@ -19,9 +19,6 @@ The repository name follows the required `DIT5411-your-name` format. All project
 
 The primary development machine has:
 
-- Apple M5 Max with 18 CPU cores and a 40-core GPU
-- 128 GB unified memory
-- Approximately 522 GB free disk space at the initial environment audit
 - Python 3.11.15
 - TensorFlow 2.18.1, Keras 3.5.0, and tensorflow-metal 1.2.0
 
@@ -29,19 +26,19 @@ Metal 1.2.0 failed to load with TensorFlow 2.21 in this environment, so the comp
 
 A synthetic batch-256 training-step benchmark produced the following idealized Metal results. These measurements exclude real image reading, decoding, augmentation, validation, and checkpoint overhead.
 
-| Model | Metal seconds/step |
-|---|---:|
-| MLP with LeakyReLU | 0.009 |
-| Compact CNN | 0.033 |
-| Deeper CNN | 0.129 |
+| Model              | Metal seconds/step |
+| ------------------ | -----------------: |
+| MLP with LeakyReLU |              0.009 |
+| Compact CNN        |              0.033 |
+| Deeper CNN         |              0.129 |
 
 A second 20-step Metal benchmark used the real `fit.csv` images and deterministic augmentation pipeline at batch size 256. It included image reading, decoding, resizing, and augmentation, but excluded validation and checkpoint overhead.
 
-| Model | Real-data Metal seconds/step | Estimated hours per full epoch |
-|---|---:|---:|
-| MLP with LeakyReLU | 0.033 | 0.09 |
-| Compact CNN | 0.037 | 0.10 |
-| Deeper CNN | 0.126 | 0.36 |
+| Model              | Real-data Metal seconds/step | Estimated hours per full epoch |
+| ------------------ | ---------------------------: | -----------------------------: |
+| MLP with LeakyReLU |                        0.033 |                           0.09 |
+| Compact CNN        |                        0.037 |                           0.10 |
+| Deeper CNN         |                        0.126 |                           0.36 |
 
 All benchmark figures are performance measurements, **not recognition accuracies**.
 
@@ -119,12 +116,12 @@ Preparation requires exactly 13,065 class directories and verifies every image w
 
 The official archive stores class directories as numeric IDs. The actual Chinese character is the shared filename prefix, as in `仚_46.png`. Preparation derives the class mapping from these prefixes, validates one prefix per directory and uniqueness across all directories, and assigns label indices in numeric directory order. Single-image prediction therefore returns the Chinese character rather than the numeric directory ID.
 
-| Manifest | Purpose | Images per class |
-|---|---|---:|
-| `fit.csv` | Development-model training originals | 36 for standard classes; fewer for short classes |
-| `validation.csv` | Early stopping and learning-rate scheduling | Up to 4 |
-| `train.csv` | Complete assignment training pool | First 40 for standard classes; approximately first 80% for short classes |
-| `test.csv` | Final recognition evaluation | All remaining original images |
+| Manifest           | Purpose                                     |                                                         Images per class |
+| ------------------ | ------------------------------------------- | -----------------------------------------------------------------------: |
+| `fit.csv`        | Development-model training originals        |                         36 for standard classes; fewer for short classes |
+| `validation.csv` | Early stopping and learning-rate scheduling |                                                                  Up to 4 |
+| `train.csv`      | Complete assignment training pool           | First 40 for standard classes; approximately first 80% for short classes |
+| `test.csv`       | Final recognition evaluation                |                                            All remaining original images |
 
 The official data contains **43 classes with only 16–40 images**, so the requested 40 training images plus a nonempty test set is mathematically impossible for those classes. Standard classes with more than 40 images use exactly the first 40 for training. Each short class uses approximately its first 80% for training, always retaining at least one original image for testing. This necessary exception preserves all 13,065 classes and never duplicates test images into training. Exact counts for every short class are recorded in `outputs/data/dataset_summary.json`; all classes are listed in `class_counts.csv`.
 
@@ -140,12 +137,12 @@ Augmentation is applied only to training samples. A deterministic seed is derive
 
 Each affine transformation combines:
 
-| Operation | Standard profile | Mild profile |
-|---|---|---|
-| Rotation | -10° to +10° | -7° to +7° |
-| Shear | -0.12 to +0.12 | -0.08 to +0.08 |
-| Scaling | 0.90 to 1.10 | 0.93 to 1.07 |
-| Horizontal and vertical translation | Up to 5% of image width or height | Up to 3% |
+| Operation                           | Standard profile                  | Mild profile   |
+| ----------------------------------- | --------------------------------- | -------------- |
+| Rotation                            | -10° to +10°                    | -7° to +7°   |
+| Shear                               | -0.12 to +0.12                    | -0.08 to +0.08 |
+| Scaling                             | 0.90 to 1.10                      | 0.93 to 1.07   |
+| Horizontal and vertical translation | Up to 5% of image width or height | Up to 3%       |
 
 Select the profile with `--augmentation-profile standard` or `--augmentation-profile mild`. Empty border pixels are white. The pipeline uses bilinear interpolation and clips values to `[0,1]`.
 
@@ -168,12 +165,12 @@ python -m src.augment \
 
 All models accept a single grayscale image and end with `Dense(13065, activation="softmax")`.
 
-| Model | Architecture | Purpose |
-|---|---|---|
-| MLP | Flatten → Dense 512 → LeakyReLU 0.1 → Dropout → Dense 256 → LeakyReLU 0.1 → Dropout → Softmax | Non-convolutional baseline |
-| Compact CNN | Three Conv–BatchNorm–ReLU–MaxPool blocks (32, 64, 128 filters) → Global Average Pooling → Dropout → Softmax | Efficient convolutional classifier |
-| Deeper CNN | Convolutional stem → four two-convolution residual blocks (32, 64, 128, 256 filters) → Global Average Pooling → Dropout → Softmax | Deeper spatial feature extraction |
-| SE CNN | Deeper residual blocks with squeeze-and-excitation channel attention → Global Average Pooling → Dropout → Softmax | Candidate architecture for weighting fine-grained stroke features |
+| Model       | Architecture                                                                                                                          | Purpose                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| MLP         | Flatten → Dense 512 → LeakyReLU 0.1 → Dropout → Dense 256 → LeakyReLU 0.1 → Dropout → Softmax                                  | Non-convolutional baseline                                        |
+| Compact CNN | Three Conv–BatchNorm–ReLU–MaxPool blocks (32, 64, 128 filters) → Global Average Pooling → Dropout → Softmax                     | Efficient convolutional classifier                                |
+| Deeper CNN  | Convolutional stem → four two-convolution residual blocks (32, 64, 128, 256 filters) → Global Average Pooling → Dropout → Softmax | Deeper spatial feature extraction                                 |
+| SE CNN      | Deeper residual blocks with squeeze-and-excitation channel attention → Global Average Pooling → Dropout → Softmax                  | Candidate architecture for weighting fine-grained stroke features |
 
 The complete layer definitions are in `src/models.py`. Model summaries are saved with each training run.
 
@@ -261,13 +258,13 @@ All non-TTA values below come from the original, non-augmented 162,797-image tes
 
 The initial MLP baseline used validation-loss selection before the selection rule changed; its best checkpoint was epoch 3 and training stopped after epoch 6. Compact CNN reached its best validation accuracy at epoch 8 and stopped after epoch 11. The development Deeper CNN completed all 20 epochs and reached its best validation accuracy at epoch 20.
 
-| Model / inference | Learning rate | Test loss | Test Top-1 | Test Top-5 |
-|---|---:|---:|---:|---:|
-| MLP with LeakyReLU 0.1 | 0.0001 | 12.2961 | 0.0964% | 0.3219% |
-| Compact CNN | 0.001 | 23.7212 | 1.5842% | 3.5080% |
-| Deeper CNN, development split | 0.001 | 18.2040 | 16.4763% | 19.4549% |
-| Deeper CNN, complete training pool | 0.001 | 12.3341 | 16.5636% | 27.9796% |
-| **Complete-pool Deeper CNN + 8-view mild TTA** | 0.001 | **9.1368** | **17.3867%** | **29.9465%** |
+| Model / inference                                    | Learning rate |        Test loss |         Test Top-1 |         Test Top-5 |
+| ---------------------------------------------------- | ------------: | ---------------: | -----------------: | -----------------: |
+| MLP with LeakyReLU 0.1                               |        0.0001 |          12.2961 |            0.0964% |            0.3219% |
+| Compact CNN                                          |         0.001 |          23.7212 |            1.5842% |            3.5080% |
+| Deeper CNN, development split                        |         0.001 |          18.2040 |           16.4763% |           19.4549% |
+| Deeper CNN, complete training pool                   |         0.001 |          12.3341 |           16.5636% |           27.9796% |
+| **Complete-pool Deeper CNN + 8-view mild TTA** |         0.001 | **9.1368** | **17.3867%** | **29.9465%** |
 
 The final submission configuration is the complete-training-pool Deeper CNN with 8-view mild TTA. Compared with the same model without TTA, it improves Top-1 by 0.8231 percentage points and Top-5 by 1.9669 percentage points, while reducing test loss from 12.3341 to 9.1368. The configuration was selected only by development validation and was then applied unchanged to the final model.
 
@@ -281,15 +278,15 @@ Smoke-test results from a reduced or synthetic dataset are debugging evidence on
 
 Candidate selection uses validation accuracy at equal epoch budgets; the test set is not used for tuning. The epoch-5 comparison is:
 
-| Experiment | Validation Top-1 | Validation Top-5 | Validation loss |
-|---|---:|---:|---:|
-| Original Deeper CNN, fixed standard augmentation | 11.2438% | 15.1665% | 21.0903 |
-| A1: per-epoch standard augmentation | 0.0210% | 0.0938% | 72.2994 |
-| A2: per-epoch mild augmentation | 0.0364% | 0.1646% | 57.5262 |
-| C1: fixed standard augmentation, learning rate 0.0005 | 2.9066% | 6.3930% | 20.5012 |
-| C2: AdamW, weight decay 0.0001, learning rate 0.001 | 0.2047% | 0.6755% | 31.6595 |
-| R1: Deeper CNN at 96×96, fixed standard augmentation | 0.1760% | 0.5186% | 21.7964 |
-| SE CNN at 64×64, fixed standard augmentation | 0.0268% | 0.0785% | 125.0334 |
+| Experiment                                            | Validation Top-1 | Validation Top-5 | Validation loss |
+| ----------------------------------------------------- | ---------------: | ---------------: | --------------: |
+| Original Deeper CNN, fixed standard augmentation      |         11.2438% |         15.1665% |         21.0903 |
+| A1: per-epoch standard augmentation                   |          0.0210% |          0.0938% |         72.2994 |
+| A2: per-epoch mild augmentation                       |          0.0364% |          0.1646% |         57.5262 |
+| C1: fixed standard augmentation, learning rate 0.0005 |          2.9066% |          6.3930% |         20.5012 |
+| C2: AdamW, weight decay 0.0001, learning rate 0.001   |          0.2047% |          0.6755% |         31.6595 |
+| R1: Deeper CNN at 96×96, fixed standard augmentation |          0.1760% |          0.5186% |         21.7964 |
+| SE CNN at 64×64, fixed standard augmentation         |          0.0268% |          0.0785% |        125.0334 |
 
 A1 and A2 were rejected and were not evaluated on the test set. A1 temporarily reached 3.7447% validation Top-1 at epoch 4 but collapsed at epoch 5. A2 peaked at 1.0046% at epoch 2 and also remained unstable. Neither produced a promising trajectory against the original epoch-5 baseline, so the augmentation direction was stopped.
 
@@ -301,10 +298,10 @@ R1 and the SE architecture were also rejected. At epoch 5, R1 reached 90.71% tra
 
 TTA was selected on the development Deeper CNN without changing model weights:
 
-| TTA configuration | Validation Top-1 | Validation Top-5 |
-|---|---:|---:|
-| Original single view | 18.5591% | 21.4945% |
-| Four mild views | 18.7792% | 21.9135% |
+| TTA configuration          |   Validation Top-1 |   Validation Top-5 |
+| -------------------------- | -----------------: | -----------------: |
+| Original single view       |           18.5591% |           21.4945% |
+| Four mild views            |           18.7792% |           21.9135% |
 | **Eight mild views** | **18.7926%** | **22.0054%** |
 
 Eight mild views provided the highest validation accuracy and were locked before the final test evaluation. Because TTA improved validation, label smoothing was not started in this optimization round.
