@@ -26,6 +26,9 @@ def parse_args():
     parser.add_argument("--shuffle-buffer", type=int, default=50000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--include-validation", action="store_true")
+    parser.add_argument(
+        "--selection-metric", choices=("val_accuracy", "val_loss"), default="val_accuracy"
+    )
     parser.add_argument("--mixed-precision", action="store_true")
     parser.add_argument("--resume-from", type=Path)
     parser.add_argument("--initial-epoch", type=int, default=0)
@@ -76,15 +79,16 @@ def read_complete_history(history_path):
     }
 
 
-def previous_best_accuracy(output_dir, initial_epoch):
+def previous_best_metric(output_dir, initial_epoch, metric, mode):
     history_path = output_dir / "history.csv"
     if not history_path.exists():
         return None
     with history_path.open(encoding="utf-8", newline="") as handle:
         rows = [row for row in csv.DictReader(handle) if int(row["epoch"]) < initial_epoch]
-    if not rows:
+    values = [float(row[metric]) for row in rows if row[metric] not in ("", "NA")]
+    if not values:
         return None
-    return max(float(row["val_accuracy"]) for row in rows)
+    return max(values) if mode == "max" else min(values)
 
 
 def main():
@@ -168,9 +172,12 @@ def main():
             augment=False,
             shuffle=False,
         )
+    selection_mode = "min" if args.selection_metric == "val_loss" else "max"
     previous_best = None
     if args.resume_from and not args.include_validation:
-        previous_best = previous_best_accuracy(output_dir, args.initial_epoch)
+        previous_best = previous_best_metric(
+            output_dir, args.initial_epoch, args.selection_metric, selection_mode
+        )
     run_config = {
         key: str(value) if isinstance(value, Path) else value
         for key, value in vars(args).items()
@@ -182,8 +189,9 @@ def main():
             "training_samples_per_epoch": training.sample_count,
             "validation_samples": validation.sample_count if validation else 0,
             "validation_returned_to_training": args.include_validation,
-            "checkpoint_monitor": None if args.include_validation else "val_accuracy",
-            "previous_best_val_accuracy": previous_best,
+            "checkpoint_monitor": None if args.include_validation else args.selection_metric,
+            "checkpoint_mode": None if args.include_validation else selection_mode,
+            "previous_best_selection_metric": previous_best,
             "num_classes": num_classes,
             "tensorflow_version": tf.__version__,
             "python_version": platform.python_version(),
@@ -209,21 +217,25 @@ def main():
             [
                 tf.keras.callbacks.ModelCheckpoint(
                     output_dir / "best_model.keras",
-                    monitor="val_accuracy",
-                    mode="max",
+                    monitor=args.selection_metric,
+                    mode=selection_mode,
                     save_best_only=True,
                     initial_value_threshold=previous_best,
                 ),
                 tf.keras.callbacks.EarlyStopping(
-                    monitor="val_accuracy",
-                    mode="max",
+                    monitor=args.selection_metric,
+                    mode=selection_mode,
                     patience=args.early_stopping_patience,
                     baseline=previous_best,
                     restore_best_weights=True,
                     start_from_epoch=args.initial_epoch,
                 ),
                 tf.keras.callbacks.ReduceLROnPlateau(
-                    monitor="val_accuracy", mode="max", factor=0.5, patience=1, min_lr=1e-6
+                    monitor=args.selection_metric,
+                    mode=selection_mode,
+                    factor=0.5,
+                    patience=1,
+                    min_lr=1e-6,
                 ),
             ]
         )
