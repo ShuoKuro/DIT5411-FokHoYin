@@ -1,0 +1,404 @@
+{
+  "num_classes": 13065,
+  "target_train_per_class": 40,
+  "standard_fit_per_class": 36,
+  "standard_validation_per_class": 4,
+  "augmented_samples_per_class": 200,
+  "fit_original_samples": 469620,
+  "validation_samples": 52260,
+  "train_pool_samples": 521880,
+  "test_samples": 162797,
+  "total_samples": 684677,
+  "short_class_count": 43,
+  "short_classes": [
+    {
+      "label": 22,
+      "character": "仲",
+      "fit": 25,
+      "validation": 4,
+      "train": 29,
+      "test": 7,
+      "total": 36
+    },
+    {
+      "label": 1677,
+      "character": "楹",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 6,
+      "total": 32
+    },
+    {
+      "label": 1753,
+      "character": "槳",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 6,
+      "total": 32
+    },
+    {
+      "label": 1916,
+      "character": "櫰",
+      "fit": 14,
+      "validation": 4,
+      "train": 18,
+      "test": 4,
+      "total": 22
+    },
+    {
+      "label": 2119,
+      "character": "氠",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 6,
+      "total": 32
+    },
+    {
+      "label": 2137,
+      "character": "氻",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 6,
+      "total": 32
+    },
+    {
+      "label": 2154,
+      "character": "汕",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 6,
+      "total": 32
+    },
+    {
+      "label": 2270,
+      "character": "泰",
+      "fit": 21,
+      "validation": 4,
+      "train": 25,
+      "test": 6,
+      "total": 31
+    },
+    {
+      "label": 2381,
+      "character": "涒",
+      "fit": 14,
+      "validation": 4,
+      "train": 18,
+      "test": 5,
+      "total": 23
+    },
+    {
+      "label": 2564,
+      "character": "溢",
+      "fit": 21,
+      "validation": 4,
+      "train": 25,
+      "test": 6,
+      "total": 31
+    },
+    {
+      "label": 2586,
+      "character": "溿",
+      "fit": 14,
+      "validation": 4,
+      "train": 18,
+      "test": 5,
+      "total": 23
+    },
+    {
+      "label": 2741,
+      "character": "澕",
+      "fit": 14,
+      "validation": 4,
+      "train": 18,
+      "test": 5,
+      "total": 23
+    },
+    {
+      "label": 3231,
+      "character": "犆",
+      "fit": 13,
+      "validation": 4,
+      "train": 17,
+      "test": 4,
+      "total": 21
+    },
+    {
+      "label": 3581,
+      "character": "璗",
+      "fit": 10,
+      "validation": 4,
+      "train": 14,
+      "test": 4,
+      "total": 18
+    },
+    {
+      "label": 4335,
+      "character": "勯",
+      "fit": 25,
+      "validation": 4,
+      "train": 29,
+      "test": 7,
+      "total": 36
+    },
+    {
+      "label": 4365,
+      "character": "匜",
+      "fit": 10,
+      "validation": 4,
+      "train": 14,
+      "test": 4,
+      "total": 18
+    },
+    {
+      "label": 4724,
+      "character": "礄",
+      "fit": 23,
+      "validation": 4,
+      "train": 27,
+      "test": 7,
+      "total": 34
+    },
+    {
+      "label": 4850,
+      "character": "禽",
+      "fit": 23,
+      "validation": 4,
+      "train": 27,
+      "test": 7,
+      "total": 34
+    },
+    {
+      "label": 5132,
+      "character": "箙",
+      "fit": 23,
+      "validation": 4,
+      "train": 27,
+      "test": 7,
+      "total": 34
+    },
+    {
+      "label": 5212,
+      "character": "簞",
+      "fit": 10,
+      "validation": 4,
+      "train": 14,
+      "test": 3,
+      "total": 17
+    },
+    {
+      "label": 5630,
+      "character": "繹",
+      "fit": 9,
+      "validation": 4,
+      "train": 13,
+      "test": 3,
+      "total": 16
+    },
+    {
+      "label": 5901,
+      "character": "肜",
+      "fit": 12,
+      "validation": 4,
+      "train": 16,
+      "test": 4,
+      "total": 20
+    },
+    {
+      "label": 5913,
+      "character": "肱",
+      "fit": 12,
+      "validation": 4,
+      "train": 16,
+      "test": 4,
+      "total": 20
+    },
+    {
+      "label": 6077,
+      "character": "膺",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 6,
+      "total": 32
+    },
+    {
+      "label": 6112,
+      "character": "臦",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 6,
+      "total": 32
+    },
+    {
+      "label": 6330,
+      "character": "茧",
+      "fit": 12,
+      "validation": 4,
+      "train": 16,
+      "test": 4,
+      "total": 20
+    },
+    {
+      "label": 6532,
+      "character": "葑",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 6,
+      "total": 32
+    },
+    {
+      "label": 6533,
+      "character": "葒",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 6,
+      "total": 32
+    },
+    {
+      "label": 6642,
+      "character": "蓶",
+      "fit": 12,
+      "validation": 4,
+      "train": 16,
+      "test": 4,
+      "total": 20
+    },
+    {
+      "label": 8068,
+      "character": "譝",
+      "fit": 24,
+      "validation": 4,
+      "train": 28,
+      "test": 7,
+      "total": 35
+    },
+    {
+      "label": 8218,
+      "character": "賀",
+      "fit": 24,
+      "validation": 4,
+      "train": 28,
+      "test": 7,
+      "total": 35
+    },
+    {
+      "label": 8339,
+      "character": "趴",
+      "fit": 24,
+      "validation": 4,
+      "train": 28,
+      "test": 7,
+      "total": 35
+    },
+    {
+      "label": 8571,
+      "character": "軻",
+      "fit": 23,
+      "validation": 4,
+      "train": 27,
+      "test": 7,
+      "total": 34
+    },
+    {
+      "label": 8819,
+      "character": "邛",
+      "fit": 23,
+      "validation": 4,
+      "train": 27,
+      "test": 7,
+      "total": 34
+    },
+    {
+      "label": 8974,
+      "character": "酩",
+      "fit": 23,
+      "validation": 4,
+      "train": 27,
+      "test": 7,
+      "total": 34
+    },
+    {
+      "label": 9088,
+      "character": "鈇",
+      "fit": 18,
+      "validation": 4,
+      "train": 22,
+      "test": 5,
+      "total": 27
+    },
+    {
+      "label": 9100,
+      "character": "鈗",
+      "fit": 23,
+      "validation": 4,
+      "train": 27,
+      "test": 7,
+      "total": 34
+    },
+    {
+      "label": 9124,
+      "character": "鈿",
+      "fit": 23,
+      "validation": 4,
+      "train": 27,
+      "test": 7,
+      "total": 34
+    },
+    {
+      "label": 9873,
+      "character": "鞻",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 7,
+      "total": 33
+    },
+    {
+      "label": 10019,
+      "character": "飌",
+      "fit": 22,
+      "validation": 4,
+      "train": 26,
+      "test": 7,
+      "total": 33
+    },
+    {
+      "label": 10582,
+      "character": "鴣",
+      "fit": 14,
+      "validation": 4,
+      "train": 18,
+      "test": 4,
+      "total": 22
+    },
+    {
+      "label": 10646,
+      "character": "鶄",
+      "fit": 26,
+      "validation": 4,
+      "train": 30,
+      "test": 7,
+      "total": 37
+    },
+    {
+      "label": 11500,
+      "character": "塥",
+      "fit": 24,
+      "validation": 4,
+      "train": 28,
+      "test": 7,
+      "total": 35
+    }
+  ],
+  "split_rule": "Natural filename order; classes with more than 40 images use the first 40 for training. Short classes use approximately the first 80% for training. All remaining images form the test set.",
+  "validation_rule": "Up to the last 4 images within each training pool are held out for development runs."
+}

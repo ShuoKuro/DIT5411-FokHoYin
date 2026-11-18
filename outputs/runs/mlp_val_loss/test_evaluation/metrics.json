@@ -1,0 +1,9 @@
+{
+  "model_path": "outputs/runs/mlp/best_model.keras",
+  "test_manifest": "outputs/data/test.csv",
+  "test_samples": 162797,
+  "augmented_test_samples": 0,
+  "top1_accuracy": 0.0009643912357107317,
+  "top5_accuracy": 0.003218732531926264,
+  "loss": 12.29605818684346
+}

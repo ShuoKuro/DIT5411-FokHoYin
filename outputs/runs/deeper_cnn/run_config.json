@@ -1,0 +1,32 @@
+{
+  "data_dir": "data/cleaned_data",
+  "manifest_dir": "outputs/data",
+  "model": "deeper_cnn",
+  "output_dir": "outputs/runs/deeper_cnn",
+  "epochs": 20,
+  "batch_size": 256,
+  "image_size": 64,
+  "learning_rate": 0.001,
+  "augmentation_target": 200,
+  "early_stopping_patience": 3,
+  "shuffle_buffer": 50000,
+  "seed": 42,
+  "include_validation": false,
+  "mixed_precision": false,
+  "resume_from": null,
+  "initial_epoch": 0,
+  "verbose": 2,
+  "train_manifest": "outputs/data/fit.csv",
+  "training_samples_per_epoch": 2613000,
+  "validation_samples": 52260,
+  "validation_returned_to_training": false,
+  "checkpoint_monitor": "val_accuracy",
+  "previous_best_val_accuracy": null,
+  "num_classes": 13065,
+  "tensorflow_version": "2.18.1",
+  "python_version": "3.11.15",
+  "physical_devices": [
+    "/physical_device:CPU:0",
+    "/physical_device:GPU:0"
+  ]
+}

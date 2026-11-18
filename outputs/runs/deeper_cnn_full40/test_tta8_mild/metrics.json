@@ -1,0 +1,13 @@
+{
+  "model_path": "outputs/runs/deeper_cnn_full40/final_model.keras",
+  "split": "test",
+  "manifest": "outputs/data/test.csv",
+  "samples": 162797,
+  "views_per_sample": 8,
+  "augmented_views_per_sample": 7,
+  "profile": "mild",
+  "seed": 42,
+  "top1_accuracy": 0.1738668402980399,
+  "top5_accuracy": 0.2994649778558573,
+  "loss": 9.136771075808833
+}

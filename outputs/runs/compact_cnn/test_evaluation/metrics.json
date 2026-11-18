@@ -1,0 +1,9 @@
+{
+  "model_path": "outputs/runs/compact_cnn/best_model.keras",
+  "test_manifest": "outputs/data/test.csv",
+  "test_samples": 162797,
+  "augmented_test_samples": 0,
+  "top1_accuracy": 0.015841815266866097,
+  "top5_accuracy": 0.03508049902639483,
+  "loss": 23.721234131271782
+}

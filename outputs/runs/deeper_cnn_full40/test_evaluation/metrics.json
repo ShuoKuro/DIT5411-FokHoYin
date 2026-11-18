@@ -1,0 +1,9 @@
+{
+  "model_path": "outputs/runs/deeper_cnn_full40/final_model.keras",
+  "test_manifest": "outputs/data/test.csv",
+  "test_samples": 162797,
+  "augmented_test_samples": 0,
+  "top1_accuracy": 0.1656357303881521,
+  "top5_accuracy": 0.27979631074282696,
+  "loss": 12.334125694944783
+}
