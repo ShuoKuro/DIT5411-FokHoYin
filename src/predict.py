@@ -29,7 +29,10 @@ def main():
     image_size = model.input_shape[1]
     image = load_image(str(args.image), image_size)
     if args.data_dir:
-        seed_path = args.image.resolve().relative_to(args.data_dir.resolve()).as_posix()
+        try:
+            seed_path = args.image.resolve().relative_to(args.data_dir.resolve()).as_posix()
+        except ValueError:
+            seed_path = args.image.as_posix()
     else:
         seed_path = args.image.as_posix()
 
