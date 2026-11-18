@@ -2,7 +2,7 @@
 
 A Python and TensorFlow project for the DIT5411 Machine Learning character recognition assignment. The project trains and compares several multilayer classifiers for **13,065 Traditional Chinese character classes**.
 
-The assignment permits either local development or Google Colab. This repository uses a **local-first Apple Silicon workflow**; Colab is optional and is not required.
+This repository uses a **local Apple Silicon workflow**.
 
 ## Assignment Requirements
 
@@ -82,7 +82,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-`tensorflow-metal` has Darwin/ARM64 environment markers. It is installed on this Mac and skipped on non-Apple platforms, including Linux Colab.
+`tensorflow-metal` has Darwin/ARM64 environment markers. It is installed on this Mac and skipped on non-Apple platforms.
 
 Verify the actual compute backend before starting a long run:
 
@@ -96,10 +96,6 @@ PY
 ```
 
 The Metal check must show both CPU and GPU devices. If GPU detection fails, the training code can still run locally on CPU, but the longer CNN experiments will take more time. No GPU performance should be claimed unless this check and a training step both succeed.
-
-### Optional Colab Alternative
-
-`notebooks/DIT5411_Colab.ipynb` contains the equivalent cloud workflow. It is provided only as a fallback for users without a suitable local machine. Select a GPU runtime in Colab and follow the notebook cells; the Apple-only Metal dependency will be skipped automatically.
 
 ## Deterministic Data Split
 
@@ -176,10 +172,16 @@ The complete layer definitions are in `src/models.py`. Model summaries are saved
 
 ## Local Training
 
-Run the development experiments locally with the same data, augmentation target, image size, and stopping rules:
+Run the development experiments locally with the same data, augmentation target, image size, and stopping rules. The reported MLP uses its original validation-loss selection rule; the CNNs use validation accuracy:
 
 ```bash
-python -m src.train --data-dir data/cleaned_data --model mlp --epochs 20 --learning-rate 0.0001 --verbose 2
+python -m src.train \
+  --data-dir data/cleaned_data \
+  --model mlp \
+  --epochs 20 \
+  --learning-rate 0.0001 \
+  --selection-metric val_loss \
+  --verbose 2
 python -m src.train --data-dir data/cleaned_data --model compact_cnn --epochs 20 --verbose 2
 python -m src.train --data-dir data/cleaned_data --model deeper_cnn --epochs 20 --verbose 2
 ```
@@ -188,23 +190,24 @@ The default optimizer is Adam with zero weight decay. For an independent decoupl
 
 For long background runs, `--verbose 2` emits one line per epoch instead of rewriting every step, preventing excessive log output.
 
-To resume after an interruption, load the best checkpoint and set `--initial-epoch` to the number of fully completed epochs. For example, resume Compact CNN after eight complete epochs:
+To resume after an interruption, load the best checkpoint and set `--initial-epoch` to the number of fully completed epochs. Use the same selection metric as the original run. For example, resume Compact CNN after eight complete epochs:
 
 ```bash
 python -m src.train \
   --data-dir data/cleaned_data \
   --model compact_cnn \
   --epochs 20 \
+  --selection-metric val_accuracy \
   --resume-from outputs/runs/compact_cnn/best_model.keras \
   --initial-epoch 8 \
   --verbose 2
 ```
 
-Resume restores model weights and optimizer state, appends `history.csv`, and preserves the previous best validation-accuracy threshold so a worse resumed epoch cannot replace the existing best checkpoint.
+Resume restores model weights and optimizer state, appends `history.csv`, and preserves the previous best threshold for the selected metric so a worse resumed epoch cannot replace the existing best checkpoint.
 
-The initial ReLU MLP at learning rate 0.001 developed completely inactive hidden layers. The final MLP therefore uses LeakyReLU 0.1 and learning rate 0.0001; the CNNs retain the default 0.001. This is the only intentional model-specific training-setting difference and is recorded in each run configuration.
+The initial ReLU MLP at learning rate 0.001 developed completely inactive hidden layers. The final MLP therefore uses LeakyReLU 0.1 and learning rate 0.0001; the CNNs retain the default 0.001. These settings and the selection metric are recorded in each run configuration.
 
-Development checkpoint selection, early stopping, and learning-rate scheduling all monitor validation Top-1 accuracy in `max` mode. This aligns model selection with the assignment's recognition-rate objective and avoids premature stopping when validation loss rises because of overconfident wrong predictions.
+By default, development checkpoint selection, early stopping, and learning-rate scheduling monitor validation Top-1 accuracy in `max` mode. This aligns model selection with the assignment's recognition-rate objective and avoids premature stopping when validation loss rises because of overconfident wrong predictions. For the legacy MLP result only, `--selection-metric val_loss` switches all three callbacks to validation loss in `min` mode, matching the experiment that produced the reported checkpoint.
 
 The default float32 policy was used for the successful Metal backend checks. `--mixed-precision` is available as an optional experiment but is not required and should be enabled only after a separate numerical-stability check. Batch size, learning rate, seed, and other settings are configurable through command-line options.
 
@@ -213,7 +216,7 @@ Each run saves:
 - `run_config.json`: complete settings, software versions, and physical devices
 - `model_summary.txt`: layer architecture and parameter counts
 - `history.csv`, `history.json`, and `training_curves.png`: training history
-- `best_model.keras`: highest validation-accuracy checkpoint for development runs
+- `best_model.keras`: best checkpoint according to `--selection-metric` for development runs
 - `final_model.keras`: model at the end of the run
 
 After selecting an architecture, retrain it with the complete training pool, including the development-validation images. Use the best development epoch count as a fixed epoch count:
@@ -258,19 +261,21 @@ All non-TTA values below come from the original, non-augmented 162,797-image tes
 
 The initial MLP baseline used validation-loss selection before the selection rule changed; its best checkpoint was epoch 3 and training stopped after epoch 6. Compact CNN reached its best validation accuracy at epoch 8 and stopped after epoch 11. The development Deeper CNN completed all 20 epochs and reached its best validation accuracy at epoch 20.
 
-| Model / inference                                    | Learning rate |        Test loss |         Test Top-1 |         Test Top-5 |
-| ---------------------------------------------------- | ------------: | ---------------: | -----------------: | -----------------: |
-| MLP with LeakyReLU 0.1                               |        0.0001 |          12.2961 |            0.0964% |            0.3219% |
-| Compact CNN                                          |         0.001 |          23.7212 |            1.5842% |            3.5080% |
-| Deeper CNN, development split                        |         0.001 |          18.2040 |           16.4763% |           19.4549% |
-| Deeper CNN, complete training pool                   |         0.001 |          12.3341 |           16.5636% |           27.9796% |
-| **Complete-pool Deeper CNN + 8-view mild TTA** |         0.001 | **9.1368** | **17.3867%** | **29.9465%** |
+| Model / inference | Learning rate | Test loss | Test Top-1 | Test Top-5 |
+| ----------------- | ------------: | --------: | ---------: | ---------: |
+| [MLP with LeakyReLU 0.1](outputs/runs/mlp_val_loss/test_evaluation/metrics.json) | 0.0001 | 12.2961 | 0.0964% | 0.3219% |
+| [Compact CNN](outputs/runs/compact_cnn/test_evaluation/metrics.json) | 0.001 | 23.7212 | 1.5842% | 3.5080% |
+| [Deeper CNN, development split](outputs/runs/deeper_cnn/test_evaluation/metrics.json) | 0.001 | 18.2040 | 16.4763% | 19.4549% |
+| [Deeper CNN, complete training pool](outputs/runs/deeper_cnn_full40/test_evaluation/metrics.json) | 0.001 | 12.3341 | 16.5636% | 27.9796% |
+| [**Complete-pool Deeper CNN + 8-view mild TTA**](outputs/runs/deeper_cnn_full40/test_tta8_mild/metrics.json) | 0.001 | **9.1368** | **17.3867%** | **29.9465%** |
+
+Each core run directory also contains its committed `run_config.json`, `model_summary.txt`, and `history.csv`. The [dataset audit](outputs/data/dataset_summary.json) and [augmentation preview](outputs/augmentation_preview.png) with its [parameters](outputs/augmentation_preview.json) are included as small evidence files. Model binaries, full manifests, and per-image prediction CSVs remain local.
 
 The final submission configuration is the complete-training-pool Deeper CNN with 8-view mild TTA. Compared with the same model without TTA, it improves Top-1 by 0.8231 percentage points and Top-5 by 1.9669 percentage points, while reducing test loss from 12.3341 to 9.1368. The configuration was selected only by development validation and was then applied unchanged to the final model.
 
 The full-pool training run reached 98.51% training accuracy, compared with 16.56% original-image test Top-1 and 17.39% TTA Top-1. The remaining gap still indicates substantial overfitting. Limited originals per class, similar Chinese character shapes, and deterministic repeated training variants are important limitations. More diverse real handwriting remains the preferred long-term improvement.
 
-The final TTA metrics are stored in `outputs/runs/deeper_cnn_full40/test_tta8_mild/metrics.json`. A final-model single-image check with the same eight views on the original test image `5/他_41.png` correctly returned `他` with mean probability 0.4410 and Top-5 candidates `他; 伳; 她; 怹; 赩`. Individual examples are not used to calculate overall accuracy.
+A final-model single-image check with the same eight views on the original test image `5/他_41.png` correctly returned `他` with mean probability 0.4410 and Top-5 candidates `他; 伳; 她; 怹; 赩`. Individual examples are not used to calculate overall accuracy.
 
 Smoke-test results from a reduced or synthetic dataset are debugging evidence only and are not assignment test accuracy.
 
@@ -306,14 +311,31 @@ TTA was selected on the development Deeper CNN without changing model weights:
 
 Eight mild views provided the highest validation accuracy and were locked before the final test evaluation. Because TTA improved validation, label smoothing was not started in this optimization round.
 
+Reproduce the final 8-view mild TTA evaluation on all 162,797 original test images with:
+
+```bash
+python -m src.tta_evaluate \
+  --data-dir data/cleaned_data \
+  --manifest-dir outputs/data \
+  --model-path outputs/runs/deeper_cnn_full40/final_model.keras \
+  --split test \
+  --views 8 \
+  --profile mild \
+  --seed 42 \
+  --batch-size 256 \
+  --output-dir outputs/runs/deeper_cnn_full40/test_tta8_mild
+```
+
+This writes `metrics.json` and `top5_predictions.csv` to the specified output directory. The committed [final TTA metrics](outputs/runs/deeper_cnn_full40/test_tta8_mild/metrics.json) correspond to this command.
+
 ## Single-Image Prediction
 
-After training and evaluation, run the selected 8-view TTA configuration:
+After training and evaluation, reproduce the documented single-image check with the selected 8-view TTA configuration:
 
 ```bash
 python -m src.predict \
   --model-path outputs/runs/deeper_cnn_full40/final_model.keras \
-  --image path/to/handwritten_image.png \
+  --image data/cleaned_data/5/他_41.png \
   --manifest-dir outputs/data \
   --tta-views 8 \
   --tta-profile mild \
@@ -321,7 +343,7 @@ python -m src.predict \
   --data-dir data/cleaned_data
 ```
 
-The command prints the predicted character and ranked class indices and mean probabilities. Preprocessing is grayscale conversion, resizing, and normalization. The default `--tta-views 1` preserves original single-image inference; eight views average the original prediction with seven deterministic mild transformations. TTA is an inference method and is reported separately from non-augmented evaluation.
+Replace `--image` to predict another image; paths outside `--data-dir` are also accepted. The command prints the predicted character and ranked class indices and mean probabilities. Preprocessing is grayscale conversion, resizing, and normalization. The default `--tta-views 1` preserves original single-image inference; eight views average the original prediction with seven deterministic mild transformations. TTA is an inference method and is reported separately from non-augmented evaluation.
 
 ## Reproducibility and Repository Contents
 
@@ -334,9 +356,8 @@ The command prints the predicted character and ranked class indices and mean pro
 - `src/evaluate.py`: streaming non-augmented test evaluation and Top-5 prediction export
 - `src/tta_evaluate.py`: deterministic test-time augmentation evaluation
 - `src/predict.py`: single-image inference with optional TTA
-- `notebooks/DIT5411_Colab.ipynb`: optional GPU-enabled cloud workflow
 
-The `data/`, `outputs/`, virtual-environment, and cache directories are ignored. Do not commit the raw dataset, augmented dataset, model binaries, or large prediction files. Record the actual software and hardware details from `run_config.json` with the final results.
+The `data/`, virtual-environment, cache directories, and generated outputs are ignored except for the small evidence files linked above. Do not commit the raw dataset, augmented dataset, model binaries, or large prediction files. Record the actual software and hardware details from `run_config.json` with the final results.
 
 ## References
 
